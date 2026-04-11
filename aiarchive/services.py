@@ -714,10 +714,9 @@ def purge_platform_data(connection: Connection, platform: str) -> PurgeResult:
             """,
             (normalized_platform,),
         )
-
+        connection.execute("DELETE FROM message_fts WHERE platform = ?", (normalized_platform,))
         connection.execute("DELETE FROM imports WHERE platform = ?", (normalized_platform,))
         connection.execute("DELETE FROM conversations WHERE platform = ?", (normalized_platform,))
-        connection.execute("INSERT INTO message_fts(message_fts) VALUES ('rebuild')")
         asset_dir = settings.media_dir / normalized_platform
         if asset_dir.exists():
             shutil.rmtree(asset_dir)

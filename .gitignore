@@ -1,6 +1,9 @@
-.venv/
-__pycache__/
-*.pyc
 data/archive.db
 data/archive.db-shm
 data/archive.db-wal
+data/media/
+data/zip_uploads/
+imports/
+.venv/
+__pycache__/
+*.pyc
