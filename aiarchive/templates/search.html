@@ -49,7 +49,7 @@
         <li>
             <a href="/conversations/{{ item.id }}{% if item.matched_message_id %}#message-{{ item.matched_message_id }}{% endif %}" class="conversation-link">
                 <div class="conversation-head">
-                    <strong class="conversation-title" title="{{ item.title }}">{{ item.title }}</strong>
+                    <strong class="conversation-title" title="{{ item.title }}">{{ item.title|highlight_query(filters.q) }}</strong>
                     <span class="platform">{{ item.platform }}</span>
                 </div>
                 <div class="conversation-meta">
@@ -57,7 +57,7 @@
                     <span>{{ item.latest_message_at|datetime_display }}</span>
                 </div>
                 {% if item.snippet %}
-                <p class="snippet">{{ item.snippet|safe }}</p>
+                <p class="snippet">{{ item.snippet|highlight_query(filters.q) }}</p>
                 {% endif %}
             </a>
         </li>
@@ -73,7 +73,11 @@
         {% endif %}
     </div>
     {% else %}
+        {% if filters.has_search_input %}
     <p class="empty">当前筛选条件下没有匹配的会话。</p>
+        {% else %}
+    <p class="empty">请输入关键词或选择筛选条件后再开始搜索。</p>
+        {% endif %}
     {% endif %}
 </section>
 {% endblock %}

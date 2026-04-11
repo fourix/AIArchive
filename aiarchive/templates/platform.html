@@ -39,7 +39,7 @@
     </div>
     <ul class="conversation-list">
         {% for item in conversations %}
-        <li>
+        <li id="conversation-{{ item.id }}">
             <a href="/conversations/{{ item.id }}" class="conversation-link">
                 <div class="conversation-head">
                     <strong class="conversation-title" title="{{ item.title }}">{{ item.title }}</strong>

@@ -1,6 +1,14 @@
 # AI Chat Archive
 
-A local AI chat archive system built with FastAPI, SQLite FTS5, and Jinja2. It imports exports from OpenAI, Gemini, Grok, and DeepSeek into a unified schema for search and browsing on small hardware, including Raspberry Pi.
+A local AI chat archive system built with FastAPI, SQLite FTS5, and Jinja2. The project is intended for personal use: importing your own official exports from OpenAI, Gemini, Grok, and DeepSeek into a unified archive so you can more easily search and revisit your past conversations, including on small hardware such as Raspberry Pi.
+
+## Notice
+
+- This project is an independent personal archive tool for searching your own exported chat history. It is not affiliated with, endorsed by, or sponsored by OpenAI, Google, xAI, or DeepSeek.
+- Import and use only data and attachments that you are legally allowed to access, store, and process.
+- This project is intended for user-supplied official exports. Do not use it to scrape, bypass, or bulk-extract data in ways that violate platform terms or third-party rights.
+- You are responsible for ensuring that any imported content, attachments, exports, screenshots, or redistributed data do not infringe copyright, privacy, contract, or other rights.
+- Do not publish the `data/` directory, database files, imported attachments, or real chat exports unless you have the legal right to do so.
 
 ## Features
 
@@ -129,3 +137,7 @@ Grok import format:
 - Python 3.11+ recommended
 - SQLite FTS5 is included in standard Python builds on Raspberry Pi OS
 - The app keeps dependencies minimal and uses synchronous SQLite access to reduce operational complexity
+
+## License
+
+This project is released under the MIT License. See [LICENSE](LICENSE).

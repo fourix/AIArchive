@@ -97,8 +97,10 @@ def import_file(connection: Connection, platform: str, filename: str, raw: bytes
         return import_grok_export_zip(connection, filename, raw)
     if importer.platform == "deepseek" and _looks_like_zip_upload(filename, raw):
         return import_deepseek_export_zip(connection, filename, raw)
+    if _looks_like_zip_upload(filename, raw):
+        raise ValueError(f"{platform.capitalize()} import does not accept this ZIP format")
     file_sha = sha256_bytes(raw)
-    conversations = importer.parse_bytes(raw)
+    conversations = _parse_import_bytes(importer, raw)
     _prepare_platform_assets(conversations, importer.platform, file_sha, None)
     return _persist_import(connection, importer.platform, filename, file_sha, conversations)
 
@@ -113,10 +115,12 @@ def import_file_from_path(connection: Connection, platform: str, json_path: str)
         return import_gemini_takeout_zip(connection, source_path.name, source_path.read_bytes())
     if importer.platform == "grok" and source_path.suffix.lower() == ".zip":
         return import_grok_export_zip(connection, source_path.name, source_path.read_bytes())
+    if source_path.suffix.lower() == ".zip":
+        raise ValueError(f"{platform.capitalize()} import does not accept this ZIP format")
 
     raw = source_path.read_bytes()
     file_sha = sha256_bytes(raw)
-    conversations = importer.parse_bytes(raw, source_path=source_path)
+    conversations = _parse_import_bytes(importer, raw, source_path=source_path)
     _prepare_platform_assets(conversations, importer.platform, file_sha, source_path)
     return _persist_import(connection, importer.platform, source_path.name, file_sha, conversations)
 
@@ -135,8 +139,10 @@ def import_file_with_uploaded_assets(
         return import_grok_export_zip(connection, filename, raw)
     if importer.platform == "deepseek" and _looks_like_zip_upload(filename, raw):
         return import_deepseek_export_zip(connection, filename, raw)
+    if _looks_like_zip_upload(filename, raw):
+        raise ValueError(f"{platform.capitalize()} import does not accept this ZIP format")
     file_sha = sha256_bytes(raw)
-    conversations = importer.parse_bytes(raw)
+    conversations = _parse_import_bytes(importer, raw)
     _prepare_platform_assets_from_uploads(conversations, importer.platform, file_sha, uploaded_assets)
     return _persist_import(connection, importer.platform, filename, file_sha, conversations)
 
@@ -144,6 +150,8 @@ def import_file_with_uploaded_assets(
 def import_gemini_takeout_zip(connection: Connection, filename: str, raw: bytes) -> ImportResult:
     importer = get_importer("gemini")
     file_sha = sha256_bytes(raw)
+
+    _validate_zip_matches_platform("gemini", raw)
 
     with tempfile.TemporaryDirectory(prefix="gemini_takeout_", dir=settings.imports_dir) as temp_dir:
         extracted_root = Path(temp_dir)
@@ -153,7 +161,12 @@ def import_gemini_takeout_zip(connection: Connection, filename: str, raw: bytes)
             raise ValueError("Could not read filenames inside the Gemini Takeout ZIP archive") from exc
         except zipfile.BadZipFile as exc:
             raise ValueError("Uploaded Gemini file is not a valid ZIP archive") from exc
-        conversations = importer.parse_bytes(json_path.read_bytes(), source_path=json_path)
+        conversations = _parse_import_bytes(
+            importer,
+            json_path.read_bytes(),
+            source_path=json_path,
+            error_prefix="Gemini archive content is not in the expected export format",
+        )
         _prepare_platform_assets(conversations, importer.platform, file_sha, json_path)
         return _persist_import(connection, importer.platform, filename, file_sha, conversations)
 
@@ -162,6 +175,8 @@ def import_deepseek_export_zip(connection: Connection, filename: str, raw: bytes
     importer = get_importer("deepseek")
     file_sha = sha256_bytes(raw)
 
+    _validate_zip_matches_platform("deepseek", raw)
+
     try:
         conversations_raw = _read_deepseek_conversations_json(raw)
     except UnicodeDecodeError as exc:
@@ -169,13 +184,19 @@ def import_deepseek_export_zip(connection: Connection, filename: str, raw: bytes
     except zipfile.BadZipFile as exc:
         raise ValueError("Uploaded DeepSeek file is not a valid ZIP archive") from exc
 
-    conversations = importer.parse_bytes(conversations_raw)
+    conversations = _parse_import_bytes(
+        importer,
+        conversations_raw,
+        error_prefix="DeepSeek archive content is not in the expected export format",
+    )
     return _persist_import(connection, importer.platform, filename, file_sha, conversations)
 
 
 def import_grok_export_zip(connection: Connection, filename: str, raw: bytes) -> ImportResult:
     importer = get_importer("grok")
     file_sha = sha256_bytes(raw)
+
+    _validate_zip_matches_platform("grok", raw)
 
     with tempfile.TemporaryDirectory(prefix="grok_export_", dir=settings.imports_dir) as temp_dir:
         extracted_root = Path(temp_dir)
@@ -186,27 +207,14 @@ def import_grok_export_zip(connection: Connection, filename: str, raw: bytes) ->
         except zipfile.BadZipFile as exc:
             raise ValueError("Uploaded Grok file is not a valid ZIP archive") from exc
 
-        conversations = importer.parse_bytes(json_path.read_bytes(), source_path=json_path)
+        conversations = _parse_import_bytes(
+            importer,
+            json_path.read_bytes(),
+            source_path=json_path,
+            error_prefix="Grok archive content is not in the expected export format",
+        )
         _prepare_platform_assets(conversations, importer.platform, file_sha, json_path)
         return _persist_import(connection, importer.platform, filename, file_sha, conversations)
-
-
-def extract_uploaded_zip(filename: str, raw: bytes) -> Path:
-    archive_name = Path(filename or "upload.zip").stem or "upload"
-    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", archive_name).strip("-._") or "upload"
-    extract_root = settings.data_dir / "zip_uploads" / f"{safe_name}-{sha256_bytes(raw)[:12]}"
-    if extract_root.exists():
-        shutil.rmtree(extract_root)
-    extract_root.mkdir(parents=True, exist_ok=True)
-
-    try:
-        _extract_zip_to_directory(raw, extract_root)
-    except UnicodeDecodeError as exc:
-        raise ValueError("Could not read filenames inside the ZIP archive") from exc
-    except zipfile.BadZipFile as exc:
-        raise ValueError("Uploaded file is not a valid ZIP archive") from exc
-
-    return extract_root
 
 
 def _persist_import(
@@ -773,6 +781,58 @@ def get_conversation_detail(connection: Connection, conversation_id: int) -> dic
     return {"conversation": dict(conversation), "messages": normalized_messages}
 
 
+def get_platform_browse_location(
+    connection: Connection,
+    conversation_id: int,
+    page_size: int = 100,
+) -> dict[str, Any] | None:
+    row = connection.execute(
+        """
+        WITH ranked AS (
+            SELECT
+                c.id,
+                c.platform,
+                COALESCE(MAX(m.created_at), c.updated_at) AS latest_message_at
+            FROM conversations c
+            LEFT JOIN messages m ON m.conversation_id = c.id
+            GROUP BY c.id
+        ),
+        target AS (
+            SELECT id, platform, latest_message_at
+            FROM ranked
+            WHERE id = ?
+        )
+        SELECT
+            target.id,
+            target.platform,
+            target.latest_message_at,
+            (
+                SELECT COUNT(*)
+                FROM ranked other
+                WHERE other.platform = target.platform
+                  AND (
+                      other.latest_message_at > target.latest_message_at
+                      OR (other.latest_message_at = target.latest_message_at AND other.id > target.id)
+                  )
+            ) AS items_before
+        FROM target
+        """,
+        (conversation_id,),
+    ).fetchone()
+    if row is None:
+        return None
+
+    items_before = int(row["items_before"] or 0)
+    page = (items_before // page_size) + 1
+    return {
+        "platform": str(row["platform"]),
+        "page": page,
+        "page_size": page_size,
+        "anchor": f"conversation-{conversation_id}",
+        "url": f"/platforms/{row['platform']}?page={page}#conversation-{conversation_id}",
+    }
+
+
 def list_recent_imports(connection: Connection, limit: int = 10) -> list[dict[str, Any]]:
     rows = connection.execute(
         """
@@ -785,6 +845,20 @@ def list_recent_imports(connection: Connection, limit: int = 10) -> list[dict[st
         (limit,),
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+def _parse_import_bytes(
+    importer: Any,
+    raw: bytes,
+    source_path: Path | None = None,
+    error_prefix: str | None = None,
+) -> list[NormalizedConversation]:
+    try:
+        return importer.parse_bytes(raw, source_path=source_path)
+    except ValueError as exc:
+        if error_prefix:
+            raise ValueError(f"{error_prefix}: {exc}") from exc
+        raise
 
 
 def _load_metadata(raw: Any) -> dict[str, Any]:
@@ -801,6 +875,40 @@ def _looks_like_zip_upload(filename: str, raw: bytes) -> bool:
     if raw.startswith(b"PK\x03\x04") or raw.startswith(b"PK\x05\x06") or raw.startswith(b"PK\x07\x08"):
         return True
     return Path(filename or "").suffix.lower() == ".zip"
+
+
+def _zip_contains_platform_signature(platform: str, raw: bytes) -> bool:
+    try:
+        with _open_zip_with_fallbacks(raw) as archive:
+            member_names = {PurePosixPath(info.filename).name for info in archive.infolist() if not info.is_dir()}
+            member_paths = {tuple(PurePosixPath(info.filename).parts) for info in archive.infolist() if not info.is_dir()}
+    except (UnicodeDecodeError, zipfile.BadZipFile, ValueError):
+        return False
+
+    if platform == "gemini":
+        return (
+            ("Takeout", "我的活动", "Gemini Apps", "我的活动记录.json") in member_paths
+            or ("Takeout", "My Activity", "Gemini Apps", "My Activity.json") in member_paths
+        )
+    if platform == "deepseek":
+        return ("conversations.json",) in member_paths
+    if platform == "grok":
+        return "prod-grok-backend.json" in member_names
+    return False
+
+
+def _validate_zip_matches_platform(platform: str, raw: bytes) -> None:
+    if not _looks_like_zip_upload("", raw):
+        raise ValueError("Uploaded file is not a valid ZIP archive")
+
+    if not _zip_contains_platform_signature(platform, raw):
+        if platform == "gemini":
+            raise ValueError("This ZIP does not look like a Gemini Takeout export")
+        if platform == "deepseek":
+            raise ValueError("This ZIP does not look like a DeepSeek export")
+        if platform == "grok":
+            raise ValueError("This ZIP does not look like a Grok export")
+        raise ValueError("This ZIP does not match the selected platform")
 
 
 def _extract_gemini_takeout_zip(raw: bytes, destination_root: Path) -> Path:

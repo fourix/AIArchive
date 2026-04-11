@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import re
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from urllib.parse import quote
+from types import SimpleNamespace
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from .config import settings
 from .db import get_connection, initialize_database
 from .services import (
-    extract_uploaded_zip,
     get_conversation_detail,
+    get_platform_browse_location,
     import_file,
     import_gemini_takeout_zip,
     list_conversations,
@@ -75,9 +77,139 @@ def format_month_day_time(value: str) -> str:
     return localized.strftime("%m-%d %H:%M")
 
 
+def _highlight_terms(query: str) -> list[str]:
+    normalized = (query or "").strip()
+    if not normalized:
+        return []
+
+    if any("\u3400" <= char <= "\u9fff" or "\uf900" <= char <= "\ufaff" for char in normalized):
+        return [normalized]
+
+    parts = [part for part in re.split(r"\s+", normalized) if part]
+    unique: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        key = part.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(part)
+    unique.sort(key=len, reverse=True)
+    return unique
+
+
+def highlight_query(value: str, query: str) -> Markup:
+    text = value or ""
+    escaped_text = escape(text)
+    terms = _highlight_terms(query)
+    if not terms:
+        return Markup(escaped_text)
+
+    pattern = "|".join(re.escape(term) for term in terms)
+    highlighted = re.sub(
+        f"({pattern})",
+        r"<mark>\1</mark>",
+        str(escaped_text),
+        flags=re.IGNORECASE,
+    )
+    return Markup(highlighted)
+
+
 templates.env.filters["datetime_display"] = format_datetime
 templates.env.filters["time_display"] = format_time
 templates.env.filters["month_day_time_display"] = format_month_day_time
+templates.env.filters["highlight_query"] = highlight_query
+
+
+def render_message_content(value: str) -> Markup:
+    text = value or ""
+    if not text.strip():
+        return Markup("")
+
+    code_block_pattern = re.compile(r"```([A-Za-z0-9_-]+)?\s*\r?\n(.*?)```", re.DOTALL)
+
+    def render_inline(inline_text: str) -> str:
+        escaped = str(escape(inline_text))
+        escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+        escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
+        escaped = re.sub(r"\*([^*\n]+)\*", r"<em>\1</em>", escaped)
+        return escaped
+
+    def render_text_block(text_block: str) -> list[str]:
+        stripped = text_block.strip()
+        if not stripped:
+            return []
+
+        lines = stripped.splitlines()
+        blocks: list[str] = []
+        paragraph: list[str] = []
+
+        def flush_paragraph() -> None:
+            if not paragraph:
+                return
+            joined = "<br>".join(render_inline(line.strip()) for line in paragraph)
+            blocks.append(f"<p>{joined}</p>")
+            paragraph.clear()
+
+        for raw_line in lines:
+            line = raw_line.rstrip()
+            plain = line.strip()
+
+            if not plain:
+                flush_paragraph()
+                continue
+
+            if plain == "---":
+                flush_paragraph()
+                blocks.append("<hr>")
+                continue
+
+            heading = re.match(r"^(#{1,4})\s+(.*)$", plain)
+            if heading:
+                flush_paragraph()
+                level = len(heading.group(1))
+                blocks.append(f"<h{level}>{render_inline(heading.group(2).strip())}</h{level}>")
+                continue
+
+            paragraph.append(line)
+
+        flush_paragraph()
+        return blocks
+
+    parts: list[str] = []
+    last_end = 0
+    for match in code_block_pattern.finditer(text):
+        if match.start() > last_end:
+            parts.extend(render_text_block(text[last_end:match.start()]))
+
+        language = (match.group(1) or "").strip().lower()
+        code = match.group(2).strip()
+        if language == "mermaid":
+            parts.append(f'<div class="mermaid">{escape(code)}</div>')
+        else:
+            escaped_code = escape(code)
+            language_class = f' class="language-{language}"' if language else ""
+            parts.append(f"<pre><code{language_class}>{escaped_code}</code></pre>")
+        last_end = match.end()
+
+    if last_end < len(text):
+        parts.extend(render_text_block(text[last_end:]))
+
+    if not parts:
+        parts.extend(render_text_block(text))
+
+    return Markup("".join(parts))
+
+
+def render_plain_text(value: str) -> Markup:
+    text = value or ""
+    if not text:
+        return Markup("")
+    return Markup(f"<pre>{escape(text)}</pre>")
+
+
+templates.env.filters["render_message_content"] = render_message_content
+templates.env.filters["render_plain_text"] = render_plain_text
 
 
 def _is_zip_upload(filename: str, raw: bytes) -> bool:
@@ -134,8 +266,6 @@ def index(
 def import_page(
     request: Request,
     imported: str = "",
-    extracted: str = "",
-    extract_path: str = "",
     purged: str = "",
     platform: str = "",
 ):
@@ -151,8 +281,6 @@ def import_page(
             "platforms": supported_platforms(),
             "filters": {
                 "imported": imported,
-                "extracted": extracted,
-                "extract_path": extract_path,
                 "purged": purged,
                 "platform": platform,
             },
@@ -194,14 +322,26 @@ def search_page(
     date_to: str = "",
     page: int = 1,
 ):
-    with get_connection() as connection:
-        conversations_page = list_conversations(
-            connection,
-            query=q,
-            platform=platform,
-            date_from=date_from,
-            date_to=date_to,
-            page=page,
+    has_search_input = any(value.strip() for value in (q, platform, date_from, date_to))
+    if has_search_input:
+        with get_connection() as connection:
+            conversations_page = list_conversations(
+                connection,
+                query=q,
+                platform=platform,
+                date_from=date_from,
+                date_to=date_to,
+                page=page,
+            )
+    else:
+        conversations_page = SimpleNamespace(
+            items=[],
+            page=1,
+            total_pages=1,
+            has_prev=False,
+            has_next=False,
+            total=0,
+            page_size=100,
         )
 
     return templates.TemplateResponse(
@@ -225,6 +365,7 @@ def search_page(
                 "date_from": date_from,
                 "date_to": date_to,
                 "page": page,
+                "has_search_input": has_search_input,
             },
             "nav_current": "search",
         },
@@ -264,28 +405,6 @@ async def import_json(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return RedirectResponse(url="/import?imported=1", status_code=303)
-
-
-@app.post("/import/debug-zip")
-async def import_debug_zip(file: UploadFile = File(...)):
-    raw = await file.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
-
-    filename = file.filename or "upload.zip"
-    if not _is_zip_upload(filename, raw):
-        raise HTTPException(status_code=400, detail="Please upload a ZIP file")
-
-    try:
-        extract_root = extract_uploaded_zip(filename=filename, raw=raw)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    relative_path = extract_root.relative_to(settings.base_dir).as_posix()
-    return RedirectResponse(
-        url=f"/import?extracted=1&extract_path={quote(relative_path, safe='')}",
-        status_code=303,
-    )
 
 
 @app.post("/platforms/{platform}/purge")
@@ -417,6 +536,7 @@ def platform_browse_api(
 def conversation_detail(request: Request, conversation_id: int):
     with get_connection() as connection:
         payload = get_conversation_detail(connection, conversation_id)
+        browse_location = get_platform_browse_location(connection, conversation_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return templates.TemplateResponse(
@@ -426,6 +546,7 @@ def conversation_detail(request: Request, conversation_id: int):
             "request": request,
             "conversation": payload["conversation"],
             "messages": payload["messages"],
+            "browse_location": browse_location,
             "ui": platform_ui_context(str(payload["conversation"]["platform"])),
             "nav_current": "",
         },

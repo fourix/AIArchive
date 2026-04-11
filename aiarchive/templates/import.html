@@ -3,7 +3,7 @@
 {% block content %}
 <section class="panel">
     <h1>导入导出文件</h1>
-    <p class="page-intro">上传各平台的 ZIP 导出文件并合并到本地档案。Gemini 使用原始 Google Takeout ZIP；DeepSeek 从根目录读取 <code>conversations.json</code>；Grok 会自动定位 <code>prod-grok-backend.json</code> 及其同级附件。</p>
+    <p class="page-intro">上传各平台导出的 ZIP 文件并合并到本地档案。Gemini 使用原始 Google Takeout ZIP，DeepSeek 从根目录读取 <code>conversations.json</code>，Grok 会自动定位 <code>prod-grok-backend.json</code> 及同级附件。</p>
     <form method="post" action="/import" enctype="multipart/form-data" class="import-form">
         <label>
             <span>平台</span>
@@ -25,38 +25,23 @@
 </section>
 
 <section class="panel">
-    <h2>临时 ZIP 解压</h2>
-    <p class="page-intro">这个临时工具只负责上传并解压 ZIP 到 <code>data/zip_uploads/</code>，不会导入到档案库。</p>
-    <form method="post" action="/import/debug-zip" enctype="multipart/form-data" class="import-form">
-        <label>
-            <span>ZIP 文件</span>
-            <input type="file" name="file" accept=".zip,application/zip" required>
-        </label>
-        <button type="submit">上传并解压</button>
-    </form>
-    {% if filters.extracted %}
-    <p class="notice">ZIP 已解压到 <code>{{ filters.extract_path }}</code>。</p>
-    {% endif %}
-</section>
-
-<section class="panel">
     <h2>最近导入</h2>
     {% if imports %}
     <ul class="import-list">
         {% for item in imports %}
         <li>
             <strong>{{ item.filename }}</strong>
-                <div class="conversation-meta">
-                    <span>{{ item.platform }}</span>
-                    <span>{{ item.imported_at|datetime_display }}</span>
-                </div>
-                <div class="conversation-meta">
-                    <span>{{ item.conversations_inserted }}/{{ item.conversations_seen }} 条会话</span>
-                    <span>{{ item.messages_inserted }}/{{ item.messages_seen }} 条消息</span>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
+            <div class="conversation-meta">
+                <span>{{ item.platform }}</span>
+                <span>{{ item.imported_at|datetime_display }}</span>
+            </div>
+            <div class="conversation-meta">
+                <span>{{ item.conversations_inserted }}/{{ item.conversations_seen }} 条会话</span>
+                <span>{{ item.messages_inserted }}/{{ item.messages_seen }} 条消息</span>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
     {% else %}
     <p class="empty">还没有导入记录。</p>
     {% endif %}

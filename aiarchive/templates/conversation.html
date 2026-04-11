@@ -2,7 +2,13 @@
 {% block title %}{{ conversation.title }}{% endblock %}
 {% block content %}
 <section class="panel">
-    <p><a href="/">返回档案首页</a></p>
+    <div class="detail-actions">
+        <a href="/" class="button-link">返回档案首页</a>
+        {% if browse_location %}
+        <a href="{{ browse_location.url }}" class="button-link">返回 {{ browse_location.platform|capitalize }} 列表</a>
+        <span class="detail-hint">定位到第 {{ browse_location.page }} 页当前会话位置</span>
+        {% endif %}
+    </div>
     <h1>{{ conversation.title }}</h1>
     {% if ui.note %}
     <p class="page-intro">{{ ui.note }}</p>
@@ -40,8 +46,10 @@
         {% endif %}
         {% if conversation.platform == 'gemini' and message.role == 'assistant' and message.html_content %}
         <div class="message-html">{{ message.html_content|safe }}</div>
+        {% elif message.role == 'user' %}
+        <div class="message-body">{{ message.display_content|render_plain_text }}</div>
         {% else %}
-        <pre class="message-body">{{ message.display_content }}</pre>
+        <div class="message-markdown">{{ message.display_content|render_message_content }}</div>
         {% endif %}
     </article>
     {% endfor %}
@@ -57,4 +65,36 @@
     </p>
 </section>
 {% endif %}
+{% endblock %}
+{% block extra_scripts %}
+<script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+    mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "loose",
+        theme: "base",
+        flowchart: {
+            htmlLabels: true
+        },
+        themeVariables: {
+            primaryColor: "#d7f3ef",
+            primaryBorderColor: "#0f766e",
+            primaryTextColor: "#1f2933",
+            lineColor: "#5f6c7b",
+            secondaryColor: "#f7efe3",
+            tertiaryColor: "#fffdf8",
+            fontFamily: "Georgia, Times New Roman, serif"
+        }
+    });
+
+    const nodes = document.querySelectorAll(".mermaid");
+    if (nodes.length > 0) {
+        try {
+            await mermaid.run({ nodes });
+        } catch (error) {
+            console.error("Mermaid render failed:", error);
+        }
+    }
+</script>
 {% endblock %}
