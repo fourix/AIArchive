@@ -26,15 +26,20 @@ from .services import (
 )
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
+def ensure_runtime_directories() -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.imports_dir.mkdir(parents=True, exist_ok=True)
     settings.media_dir.mkdir(parents=True, exist_ok=True)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    ensure_runtime_directories()
     initialize_database()
     yield
 
 
+ensure_runtime_directories()
 app = FastAPI(title=settings.app_title, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
