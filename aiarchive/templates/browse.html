@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}浏览{% endblock %}
+{% block content %}
+<section class="panel">
+    <h1>按平台浏览</h1>
+    <p class="page-intro">打开某个平台查看全部已归档会话，也可以在开发阶段清空单个平台的数据。</p>
+    {% if filters.purged and filters.platform %}
+    <p class="notice">已清空 {{ filters.platform }} 的全部归档数据。</p>
+    {% endif %}
+    <div class="platform-grid">
+        {% for item in platform_overview %}
+        <a href="/platforms/{{ item.platform }}" class="platform-card">
+            <div class="conversation-head">
+                <strong>{{ item.platform|capitalize }}</strong>
+                <span class="platform">{{ item.platform }}</span>
+            </div>
+            <div class="conversation-meta">
+                <span>{{ item.conversation_count }} 条会话</span>
+                <span>{{ item.message_count }} 条消息</span>
+            </div>
+            <p class="snippet">
+                {% if item.latest_message_at %}
+                最近活动 {{ item.latest_message_at|datetime_display }}
+                {% else %}
+                还没有导入会话
+                {% endif %}
+            </p>
+        </a>
+        <form method="post" action="/platforms/{{ item.platform }}/purge" class="platform-purge-form" onsubmit="return confirm('确认清空 {{ item.platform }} 的全部归档数据？');">
+            <button type="submit" class="danger-button">清空 {{ item.platform|capitalize }} 数据</button>
+        </form>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

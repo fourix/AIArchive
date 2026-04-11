@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}搜索{% endblock %}
+{% block content %}
+{% set pg = pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false, 'has_next': false}, true) %}
+<section class="panel">
+    <h1>搜索会话</h1>
+    <p class="page-intro">搜索所有已导入平台中的消息文本，并按平台与日期筛选。</p>
+    <form method="get" action="/search" class="search-form">
+        <label>
+            <span>关键词</span>
+            <input type="search" name="q" value="{{ filters.q }}" placeholder="搜索消息文本">
+        </label>
+        <label>
+            <span>平台</span>
+            <select name="platform">
+                <option value="">全部</option>
+                {% for value in platforms %}
+                <option value="{{ value }}" {% if filters.platform == value %}selected{% endif %}>{{ value|capitalize }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>开始日期</span>
+            <input type="date" name="date_from" value="{{ filters.date_from }}">
+        </label>
+        <label>
+            <span>结束日期</span>
+            <input type="date" name="date_to" value="{{ filters.date_to }}">
+        </label>
+        <button type="submit">应用筛选</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>搜索结果</h2>
+    <p class="page-intro">第 {{ pg.page }} 页，共 {{ pg.total_pages }} 页，总计 {{ pg.total }} 条。</p>
+    {% if conversations %}
+    <div class="pager">
+        {% if pg.has_prev %}
+        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">上一页</a>
+        {% endif %}
+        <span class="pager-status">第 {{ pg.page }} / {{ pg.total_pages }} 页</span>
+        {% if pg.has_next %}
+        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">下一页</a>
+        {% endif %}
+    </div>
+    <ul class="conversation-list">
+        {% for item in conversations %}
+        <li>
+            <a href="/conversations/{{ item.id }}{% if item.matched_message_id %}#message-{{ item.matched_message_id }}{% endif %}" class="conversation-link">
+                <div class="conversation-head">
+                    <strong class="conversation-title" title="{{ item.title }}">{{ item.title }}</strong>
+                    <span class="platform">{{ item.platform }}</span>
+                </div>
+                <div class="conversation-meta">
+                    <span>{{ item.message_count }} 条消息</span>
+                    <span>{{ item.latest_message_at|datetime_display }}</span>
+                </div>
+                {% if item.snippet %}
+                <p class="snippet">{{ item.snippet|safe }}</p>
+                {% endif %}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    <div class="pager">
+        {% if pg.has_prev %}
+        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">上一页</a>
+        {% endif %}
+        <span class="pager-status">第 {{ pg.page }} / {{ pg.total_pages }} 页</span>
+        {% if pg.has_next %}
+        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">下一页</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="empty">当前筛选条件下没有匹配的会话。</p>
+    {% endif %}
+</section>
+{% endblock %}

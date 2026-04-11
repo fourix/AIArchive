@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}AI 对话档案{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="/">AI 对话档案</a>
+            <p class="tagline">本地保存、可检索的多平台 AI 对话历史。</p>
+        </div>
+    </header>
+    <main class="wrap">
+        <nav class="function-bar">
+            <a href="/import" class="function-link {% if nav_current == 'import' %}function-link-active{% endif %}">导入</a>
+            <a href="/browse" class="function-link {% if nav_current == 'browse' %}function-link-active{% endif %}">浏览</a>
+            <a href="/search" class="function-link {% if nav_current == 'search' %}function-link-active{% endif %}">搜索</a>
+        </nav>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

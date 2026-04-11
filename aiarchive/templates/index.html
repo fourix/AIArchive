@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}AI 对话档案{% endblock %}
+{% block content %}
+<section class="hero-panel">
+    <div class="hero-copy">
+        <h1>AI 对话档案</h1>
+        <p class="page-intro">用轻量的 FastAPI 和 SQLite，本地归档 OpenAI、Gemini、Grok、DeepSeek 的导出记录，并支持全文检索。</p>
+    </div>
+    <div class="hero-actions">
+        <a href="/import" class="hero-link">前往导入</a>
+        <a href="/browse" class="hero-link">前往浏览</a>
+        <a href="/search" class="hero-link">前往搜索</a>
+    </div>
+</section>
+
+<section class="layout">
+    <div class="panel">
+        <h2>平台概览</h2>
+        <div class="platform-grid">
+            {% for item in platform_overview %}
+            <a href="/platforms/{{ item.platform }}" class="platform-card">
+                <div class="conversation-head">
+                    <strong>{{ item.platform|capitalize }}</strong>
+                    <span class="platform">{{ item.platform }}</span>
+                </div>
+                <div class="conversation-meta">
+                    <span>{{ item.conversation_count }} 条会话</span>
+                    <span>{{ item.message_count }} 条消息</span>
+                </div>
+                <p class="snippet">
+                    {% if item.latest_message_at %}
+                    最近活动 {{ item.latest_message_at|datetime_display }}
+                    {% else %}
+                    还没有导入会话
+                    {% endif %}
+                </p>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>最近导入</h2>
+        {% if imports %}
+        <ul class="import-list">
+            {% for item in imports %}
+            <li>
+                <strong>{{ item.filename }}</strong>
+                <div class="conversation-meta">
+                    <span>{{ item.platform }}</span>
+                    <span>{{ item.imported_at|datetime_display }}</span>
+                </div>
+                <div class="conversation-meta">
+                    <span>{{ item.conversations_inserted }}/{{ item.conversations_seen }} 条会话</span>
+                    <span>{{ item.messages_inserted }}/{{ item.messages_seen }} 条消息</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty">还没有导入记录。</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ conversation.title }}{% endblock %}
+{% block content %}
+<section class="panel">
+    <p><a href="/">返回档案首页</a></p>
+    <h1>{{ conversation.title }}</h1>
+    {% if ui.note %}
+    <p class="page-intro">{{ ui.note }}</p>
+    {% endif %}
+    <div class="conversation-meta">
+        <span>{{ conversation.platform }}</span>
+        <span>{{ conversation.message_count }} 条消息</span>
+        <span>更新于 {{ conversation.updated_at|datetime_display }}</span>
+    </div>
+</section>
+
+{% if messages %}
+<section class="timeline">
+    {% for message in messages %}
+    <article id="message-{{ message.id }}" class="message message-{{ message.role }}">
+        <header class="message-head">
+            <span class="message-time">
+                {% if message.role == 'user' %}
+                {{ message.created_at|month_day_time_display }}
+                {% else %}
+                {{ message.created_at|time_display }}
+                {% endif %}
+            </span>
+        </header>
+        {% if message.attachments %}
+        <div class="message-attachments">
+            {% for attachment in message.attachments %}
+                {% if attachment.url %}
+                <a href="{{ attachment.url }}" target="_blank" rel="noopener noreferrer" class="attachment-link">{{ attachment.label }}</a>
+                {% else %}
+                <span class="attachment-link attachment-missing">{{ attachment.label }}</span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if conversation.platform == 'gemini' and message.role == 'assistant' and message.html_content %}
+        <div class="message-html">{{ message.html_content|safe }}</div>
+        {% else %}
+        <pre class="message-body">{{ message.display_content }}</pre>
+        {% endif %}
+    </article>
+    {% endfor %}
+</section>
+{% else %}
+<section class="panel">
+    <p class="empty">
+        {% if conversation.platform == 'gemini' %}
+        这条 Gemini 记录导入时没有填充消息正文。请使用当前版本导入器重新导入 Gemini 数据。
+        {% else %}
+        这个会话暂时没有保存任何消息。
+        {% endif %}
+    </p>
+</section>
+{% endif %}
+{% endblock %}

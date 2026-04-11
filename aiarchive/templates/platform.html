@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}浏览 {{ platform|capitalize }}{% endblock %}
+{% block content %}
+{% set pg = pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false, 'has_next': false}, true) %}
+<section class="panel">
+    <p><a href="/">返回档案首页</a></p>
+    <div class="browse-head">
+        <h1>浏览 {{ platform|capitalize }}</h1>
+        <span class="platform">{{ platform }}</span>
+    </div>
+    {% if ui.note %}
+    <p class="page-intro">{{ ui.note }}</p>
+    {% endif %}
+    <form method="get" action="/platforms/{{ platform }}" class="search-form">
+        <label>
+            <span>开始日期</span>
+            <input type="date" name="date_from" value="{{ filters.date_from }}">
+        </label>
+        <label>
+            <span>结束日期</span>
+            <input type="date" name="date_to" value="{{ filters.date_to }}">
+        </label>
+        <button type="submit">应用筛选</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>{{ ui.collection_label }}</h2>
+    <p class="page-intro">第 {{ pg.page }} 页，共 {{ pg.total_pages }} 页，总计 {{ pg.total }} 条。</p>
+    {% if conversations %}
+    <div class="pager">
+        {% if pg.has_prev %}
+        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">上一页</a>
+        {% endif %}
+        <span class="pager-status">第 {{ pg.page }} / {{ pg.total_pages }} 页</span>
+        {% if pg.has_next %}
+        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">下一页</a>
+        {% endif %}
+    </div>
+    <ul class="conversation-list">
+        {% for item in conversations %}
+        <li>
+            <a href="/conversations/{{ item.id }}" class="conversation-link">
+                <div class="conversation-head">
+                    <strong class="conversation-title" title="{{ item.title }}">{{ item.title }}</strong>
+                    <span>{{ item.latest_message_at|datetime_display }}</span>
+                </div>
+                <div class="conversation-meta">
+                    <span>{{ item.message_count }} 条消息</span>
+                    <span>
+                        {% if platform == 'gemini' %}
+                        记录时间 {{ item.first_message_at|datetime_display }}
+                        {% else %}
+                        首条消息 {{ item.first_message_at|datetime_display }}
+                        {% endif %}
+                    </span>
+                </div>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    <div class="pager">
+        {% if pg.has_prev %}
+        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">上一页</a>
+        {% endif %}
+        <span class="pager-status">第 {{ pg.page }} / {{ pg.total_pages }} 页</span>
+        {% if pg.has_next %}
+        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">下一页</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="empty">当前平台与日期范围下没有可显示的{{ ui.item_label }}。</p>
+    {% endif %}
+</section>
+{% endblock %}
