@@ -1,75 +1,198 @@
-{% extends "base.html" %}
-{% block title %}{{ t('browse_platform', platform=platform|capitalize) }}{% endblock %}
-{% block content %}
-{% set pg = pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false, 'has_next': false}, true) %}
+{% extends "base.html" %} {% block title %}{{ t('browse_platform',
+platform=platform|capitalize) }}{% endblock %} {% block content %} {% set pg =
+pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
+'has_next': false}, true) %}
 <section class="panel">
-    <p><a href="/">{{ t('back_to_home') }}</a></p>
-    <div class="browse-head">
-        <h1>{{ t('browse_platform', platform=platform|capitalize) }}</h1>
-        <span class="platform">{{ platform }}</span>
-    </div>
-    {% if platform == 'gemini' %}
-    <p class="page-intro">{{ t('gemini_note') }}</p>
-    {% endif %}
-    <form method="get" action="/platforms/{{ platform }}" class="search-form">
-        <label>
-            <span>{{ t('start_date_label') }}</span>
-            <input type="date" name="date_from" value="{{ filters.date_from }}">
-        </label>
-        <label>
-            <span>{{ t('end_date_label') }}</span>
-            <input type="date" name="date_to" value="{{ filters.date_to }}">
-        </label>
-        <button type="submit">{{ t('apply_filters') }}</button>
-    </form>
+  <p><a href="/">{{ t('back_to_home') }}</a></p>
+  <div class="browse-head">
+    <h1>{{ t('browse_platform', platform=platform|capitalize) }}</h1>
+    <span class="platform">{{ platform }}</span>
+  </div>
+  {% if platform == 'gemini' %}
+  <p class="page-intro">{{ t('gemini_note') }}</p>
+  {% endif %}
+  <form method="get" action="/platforms/{{ platform }}" class="search-form">
+    <label>
+      <span>{{ t('start_date_label') }}</span>
+      <input
+        type="date"
+        name="date_from"
+        value="{{ filters.date_from }}"
+        lang="{{ lang_attr }}"
+      />
+    </label>
+    <label>
+      <span>{{ t('end_date_label') }}</span>
+      <input
+        type="date"
+        name="date_to"
+        value="{{ filters.date_to }}"
+        lang="{{ lang_attr }}"
+      />
+    </label>
+    <button type="submit">{{ t('apply_filters') }}</button>
+  </form>
 </section>
 
 <section class="panel">
-    <h2>{% if platform == 'gemini' %}{{ t('records_label') }}{% else %}{{ t('conversations_label')|capitalize }}{% endif %}</h2>
-    <p class="page-intro">{{ t('page_summary', page=pg.page, total_pages=pg.total_pages, total=pg.total) }}</p>
-    {% if conversations %}
-    <div class="pager">
-        {% if pg.has_prev %}
-        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">{{ t('prev_page') }}</a>
-        {% endif %}
-        <span class="pager-status">{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span>
-        {% if pg.has_next %}
-        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">{{ t('next_page') }}</a>
-        {% endif %}
-    </div>
-    <ul class="conversation-list">
-        {% for item in conversations %}
-        <li id="conversation-{{ item.id }}">
-            <a href="/conversations/{{ item.id }}" class="conversation-link">
-                <div class="conversation-head">
-                    <strong class="conversation-title" title="{{ item.title }}">{{ item.title }}</strong>
-                    <span>{{ item.latest_message_at|datetime_display }}</span>
-                </div>
-                <div class="conversation-meta">
-                    <span>{{ item.message_count }} {{ t('messages_label') }}</span>
-                    <span>
-                        {% if platform == 'gemini' %}
-                        {{ t('record_time', value=item.first_message_at|datetime_display) }}
-                        {% else %}
-                        {{ t('first_message', value=item.first_message_at|datetime_display) }}
-                        {% endif %}
-                    </span>
-                </div>
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
-    <div class="pager">
-        {% if pg.has_prev %}
-        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">{{ t('prev_page') }}</a>
-        {% endif %}
-        <span class="pager-status">{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span>
-        {% if pg.has_next %}
-        <a class="pager-link" href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">{{ t('next_page') }}</a>
-        {% endif %}
-    </div>
-    {% else %}
-    <p class="empty">{{ t('no_platform_items', item_label=(t('record_label') if platform == 'gemini' else t('conversation_label'))) }}</p>
+  <h2>
+    {% if platform == 'gemini' %}{{ t('records_label') }}{% else %}{{
+    t('conversations_label')|capitalize }}{% endif %}
+  </h2>
+  <p class="page-intro">
+    {{ t('page_summary', page=pg.page, total_pages=pg.total_pages,
+    total=pg.total) }}
+  </p>
+  {% if conversations %}
+  <div class="pager">
+    {% if pg.has_prev %}
+    <a
+      class="pager-link"
+      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      >{{ t('prev_page') }}</a
+    >
     {% endif %}
+    <span class="pager-status"
+      >{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span
+    >
+    {% if pg.has_next %}
+    <a
+      class="pager-link"
+      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      >{{ t('next_page') }}</a
+    >
+    {% endif %}
+  </div>
+  <ul class="conversation-list">
+    {% for item in conversations %}
+    <li id="conversation-{{ item.id }}">
+      <span
+        id="focus-conversation-{{ item.id }}"
+        class="scroll-anchor"
+        aria-hidden="true"
+      ></span>
+      <a href="/conversations/{{ item.id }}" class="conversation-link">
+        <div class="conversation-head">
+          <strong class="conversation-title" title="{{ item.title }}"
+            >{{ item.title }}</strong
+          >
+          <span>{{ item.latest_message_at|datetime_display }}</span>
+        </div>
+        <div class="conversation-meta">
+          <span>{{ item.message_count }} {{ t('messages_label') }}</span>
+          <span>
+            {% if platform == 'gemini' %} {{ t('record_time',
+            value=item.first_message_at|datetime_display) }} {% else %} {{
+            t('first_message', value=item.first_message_at|datetime_display) }}
+            {% endif %}
+          </span>
+        </div>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="pager">
+    {% if pg.has_prev %}
+    <a
+      class="pager-link"
+      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      >{{ t('prev_page') }}</a
+    >
+    {% endif %}
+    <span class="pager-status"
+      >{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span
+    >
+    {% if pg.has_next %}
+    <a
+      class="pager-link"
+      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      >{{ t('next_page') }}</a
+    >
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="empty">
+    {{ t('no_platform_items', item_label=(t('record_label') if platform ==
+    'gemini' else t('conversation_label'))) }}
+  </p>
+  {% endif %}
 </section>
+<a
+  href="#page-top"
+  class="back-to-top-fab"
+  aria-label="{{ t('back_to_top') }}"
+  title="{{ t('back_to_top') }}"
+>
+  <svg
+    class="back-to-top-icon"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <line x1="5" y1="4" x2="19" y2="4" />
+    <line x1="12" y1="20" x2="12" y2="9" />
+    <polyline points="6 14 12 9 18 14" />
+  </svg>
+</a>
+{% endblock %} {% block extra_scripts %}
+<script>
+  (() => {
+    function resolveTarget() {
+      const hash = window.location.hash;
+      if (!hash || !hash.startsWith("#focus-conversation-")) {
+        return null;
+      }
+
+      const anchor = document.getElementById(hash.slice(1));
+      if (!anchor) {
+        return null;
+      }
+
+      return anchor.closest("li[id]");
+    }
+
+    function adjustHashScroll() {
+      const target = resolveTarget();
+      if (!target) {
+        return;
+      }
+
+      const siteHeader = document.querySelector(".site-header");
+      const functionBar = document.querySelector(".function-bar");
+      const offset =
+        (siteHeader ? siteHeader.getBoundingClientRect().height : 0) +
+        (functionBar ? functionBar.getBoundingClientRect().height : 0) +
+        4;
+
+      const targetTop = target.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: Math.max(targetTop - offset, 0),
+        behavior: "auto",
+      });
+
+      target.classList.add("conversation-focus-target");
+      window.setTimeout(() => {
+        target.classList.remove("conversation-focus-target");
+      }, 2200);
+    }
+
+    function scheduleAdjustments() {
+      const delays = [0, 60, 180, 360];
+      for (const delay of delays) {
+        window.setTimeout(adjustHashScroll, delay);
+      }
+    }
+
+    window.addEventListener("load", () => {
+      requestAnimationFrame(scheduleAdjustments);
+    });
+
+    window.addEventListener("hashchange", scheduleAdjustments);
+    window.addEventListener("pageshow", scheduleAdjustments);
+  })();
+</script>
 {% endblock %}

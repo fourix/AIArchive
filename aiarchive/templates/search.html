@@ -1,83 +1,149 @@
-{% extends "base.html" %}
-{% block title %}{{ t('search_title') }}{% endblock %}
-{% block content %}
-{% set pg = pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false, 'has_next': false}, true) %}
+{% extends "base.html" %} {% block title %}{{ t('search_title') }}{% endblock %}
+{% block content %} {% set pg = pagination|default({'page': 1, 'total_pages': 1,
+'total': 0, 'has_prev': false, 'has_next': false}, true) %}
 <section class="panel">
-    <h1>{{ t('search_heading') }}</h1>
-    <p class="page-intro">{{ t('search_intro') }}</p>
-    <form method="get" action="/search" class="search-form">
-        <label>
-            <span>{{ t('keyword_label') }}</span>
-            <input type="search" name="q" value="{{ filters.q }}" placeholder="{{ t('search_placeholder') }}">
-        </label>
-        <label>
-            <span>{{ t('platform_label') }}</span>
-            <select name="platform">
-                <option value="">{{ t('all_platforms') }}</option>
-                {% for value in platforms %}
-                <option value="{{ value }}" {% if filters.platform == value %}selected{% endif %}>{{ value|capitalize }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>
-            <span>{{ t('start_date_label') }}</span>
-            <input type="date" name="date_from" value="{{ filters.date_from }}">
-        </label>
-        <label>
-            <span>{{ t('end_date_label') }}</span>
-            <input type="date" name="date_to" value="{{ filters.date_to }}">
-        </label>
-        <button type="submit">{{ t('apply_filters') }}</button>
-    </form>
+  <h1>{{ t('search_heading') }}</h1>
+  <p class="page-intro">{{ t('search_intro') }}</p>
+  <form method="get" action="/search" class="search-form">
+    <label>
+      <span>{{ t('keyword_label') }}</span>
+      <input
+        type="search"
+        name="q"
+        value="{{ filters.q }}"
+        placeholder="{{ t('search_placeholder') }}"
+      />
+    </label>
+    <label>
+      <span>{{ t('platform_label') }}</span>
+      <select name="platform">
+        <option value="">{{ t('all_platforms') }}</option>
+        {% for value in platforms %}
+        <option
+          value="{{ value }}"
+          {% if filters.platform == value %}selected{% endif %}
+        >
+          {{ value|capitalize }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>{{ t('start_date_label') }}</span>
+      <input
+        type="date"
+        name="date_from"
+        value="{{ filters.date_from }}"
+        lang="{{ lang_attr }}"
+      />
+    </label>
+    <label>
+      <span>{{ t('end_date_label') }}</span>
+      <input
+        type="date"
+        name="date_to"
+        value="{{ filters.date_to }}"
+        lang="{{ lang_attr }}"
+      />
+    </label>
+    <button type="submit">{{ t('apply_filters') }}</button>
+  </form>
 </section>
 
 <section class="panel">
-    <h2>{{ t('search_results') }}</h2>
-    <p class="page-intro">{{ t('page_summary', page=pg.page, total_pages=pg.total_pages, total=pg.total) }}</p>
-    {% if conversations %}
-    <div class="pager">
-        {% if pg.has_prev %}
-        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">{{ t('prev_page') }}</a>
-        {% endif %}
-        <span class="pager-status">{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span>
-        {% if pg.has_next %}
-        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">{{ t('next_page') }}</a>
-        {% endif %}
-    </div>
-    <ul class="conversation-list">
-        {% for item in conversations %}
-        <li>
-            <a href="/conversations/{{ item.id }}{% if item.matched_message_id %}#message-{{ item.matched_message_id }}{% endif %}" class="conversation-link">
-                <div class="conversation-head">
-                    <strong class="conversation-title" title="{{ item.title }}">{{ item.title|highlight_query(filters.q) }}</strong>
-                    <span class="platform">{{ item.platform }}</span>
-                </div>
-                <div class="conversation-meta">
-                    <span>{{ item.message_count }} {{ t('messages_label') }}</span>
-                    <span>{{ item.latest_message_at|datetime_display }}</span>
-                </div>
-                {% if item.snippet %}
-                <p class="snippet">{{ item.snippet|highlight_query(filters.q) }}</p>
-                {% endif %}
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
-    <div class="pager">
-        {% if pg.has_prev %}
-        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}">{{ t('prev_page') }}</a>
-        {% endif %}
-        <span class="pager-status">{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span>
-        {% if pg.has_next %}
-        <a class="pager-link" href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}">{{ t('next_page') }}</a>
-        {% endif %}
-    </div>
-    {% else %}
-        {% if filters.has_search_input %}
-    <p class="empty">{{ t('no_search_results') }}</p>
-        {% else %}
-    <p class="empty">{{ t('search_empty_prompt') }}</p>
-        {% endif %}
+  <h2>{{ t('search_results') }}</h2>
+  <p class="page-intro">
+    {{ t('page_summary', page=pg.page, total_pages=pg.total_pages,
+    total=pg.total) }}
+  </p>
+  {% if conversations %}
+  <div class="pager">
+    {% if pg.has_prev %}
+    <a
+      class="pager-link"
+      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      >{{ t('prev_page') }}</a
+    >
     {% endif %}
+    <span class="pager-status"
+      >{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span
+    >
+    {% if pg.has_next %}
+    <a
+      class="pager-link"
+      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      >{{ t('next_page') }}</a
+    >
+    {% endif %}
+  </div>
+  <ul class="conversation-list">
+    {% for item in conversations %}
+    <li>
+      <a
+        href="/conversations/{{ item.id }}{% if item.matched_message_id %}#message-{{ item.matched_message_id }}{% endif %}"
+        class="conversation-link"
+      >
+        <div class="conversation-head">
+          <strong class="conversation-title" title="{{ item.title }}"
+            >{{ item.title|highlight_query(filters.q) }}</strong
+          >
+          <span class="platform">{{ item.platform }}</span>
+        </div>
+        <div class="conversation-meta">
+          <span>{{ item.message_count }} {{ t('messages_label') }}</span>
+          <span>{{ item.latest_message_at|datetime_display }}</span>
+        </div>
+        {% if item.snippet %}
+        <p class="snippet">{{ item.snippet|highlight_query(filters.q) }}</p>
+        {% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="pager">
+    {% if pg.has_prev %}
+    <a
+      class="pager-link"
+      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      >{{ t('prev_page') }}</a
+    >
+    {% endif %}
+    <span class="pager-status"
+      >{{ t('page_fraction', page=pg.page, total_pages=pg.total_pages) }}</span
+    >
+    {% if pg.has_next %}
+    <a
+      class="pager-link"
+      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      >{{ t('next_page') }}</a
+    >
+    {% endif %}
+  </div>
+  {% else %} {% if filters.has_search_input %}
+  <p class="empty">{{ t('no_search_results') }}</p>
+  {% else %}
+  <p class="empty">{{ t('search_empty_prompt') }}</p>
+  {% endif %} {% endif %}
 </section>
+<a
+  href="#page-top"
+  class="back-to-top-fab"
+  aria-label="{{ t('back_to_top') }}"
+  title="{{ t('back_to_top') }}"
+>
+  <svg
+    class="back-to-top-icon"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <line x1="5" y1="4" x2="19" y2="4" />
+    <line x1="12" y1="20" x2="12" y2="9" />
+    <polyline points="6 14 12 9 18 14" />
+  </svg>
+</a>
 {% endblock %}

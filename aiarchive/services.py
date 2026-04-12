@@ -813,7 +813,7 @@ def get_platform_browse_location(
         "page": page,
         "page_size": page_size,
         "anchor": f"conversation-{conversation_id}",
-        "url": f"/platforms/{row['platform']}?page={page}#conversation-{conversation_id}",
+        "url": f"/platforms/{row['platform']}?page={page}#focus-conversation-{conversation_id}",
     }
 
 

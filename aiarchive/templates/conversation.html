@@ -1,100 +1,135 @@
-{% extends "base.html" %}
-{% block title %}{{ conversation.title }}{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}{{ conversation.title }}{% endblock
+%} {% block content %}
 <section class="panel">
-    <div class="detail-actions">
-        <a href="/" class="button-link">{{ t('back_to_home') }}</a>
-        {% if browse_location %}
-        <a href="{{ browse_location.url }}" class="button-link">{{ t('back_to_platform_list', platform=browse_location.platform|capitalize) }}</a>
-        <span class="detail-hint">{{ t('back_to_platform_hint', page=browse_location.page) }}</span>
-        {% endif %}
-    </div>
-    <h1>{{ conversation.title }}</h1>
-    {% if conversation.platform == 'gemini' %}
-    <p class="page-intro">{{ t('gemini_note') }}</p>
+  <div class="detail-actions">
+    <a href="/" class="button-link">{{ t('back_to_home') }}</a>
+    {% if browse_location %}
+    <a href="{{ browse_location.url }}" class="button-link"
+      >{{ t('back_to_platform_list',
+      platform=browse_location.platform|capitalize) }}</a
+    >
+    <span class="detail-hint"
+      >{{ t('back_to_platform_hint', page=browse_location.page) }}</span
+    >
     {% endif %}
-    <div class="conversation-meta">
-        <span>{{ conversation.platform }}</span>
-        <span>{{ conversation.message_count }} {{ t('messages_label') }}</span>
-        <span>{{ t('conversation_updated', value=conversation.updated_at|datetime_display) }}</span>
-    </div>
+  </div>
+  <h1>{{ conversation.title }}</h1>
+  {% if conversation.platform == 'gemini' %}
+  <p class="page-intro">{{ t('gemini_note') }}</p>
+  {% endif %}
+  <div class="conversation-meta">
+    <span>{{ conversation.platform }}</span>
+    <span>{{ conversation.message_count }} {{ t('messages_label') }}</span>
+    <span
+      >{{ t('conversation_updated',
+      value=conversation.updated_at|datetime_display) }}</span
+    >
+  </div>
 </section>
 
 {% if messages %}
 <section class="timeline">
-    {% for message in messages %}
-    <article id="message-{{ message.id }}" class="message message-{{ message.role }}">
-        <header class="message-head">
-            <span class="message-time">
-                {% if message.role == 'user' %}
-                {{ message.created_at|month_day_time_display }}
-                {% else %}
-                {{ message.created_at|time_display }}
-                {% endif %}
-            </span>
-        </header>
-        {% if message.attachments %}
-        <div class="message-attachments">
-            {% for attachment in message.attachments %}
-                {% if attachment.url %}
-                <a href="{{ attachment.url }}" target="_blank" rel="noopener noreferrer" class="attachment-link">{{ attachment.label }}</a>
-                {% else %}
-                <span class="attachment-link attachment-missing">{{ attachment.label }}</span>
-                {% endif %}
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% if conversation.platform == 'gemini' and message.role == 'assistant' and message.html_content %}
-        <div class="message-html">{{ message.html_content|safe }}</div>
-        {% elif message.role == 'user' %}
-        <div class="message-body">{{ message.display_content|render_plain_text }}</div>
-        {% else %}
-        <div class="message-markdown">{{ message.display_content|render_message_content }}</div>
-        {% endif %}
-    </article>
-    {% endfor %}
+  {% for message in messages %}
+  <article
+    id="message-{{ message.id }}"
+    class="message message-{{ message.role }}"
+  >
+    <header class="message-head">
+      <span class="message-time">
+        {% if message.role == 'user' %} {{
+        message.created_at|month_day_time_display }} {% else %} {{
+        message.created_at|time_display }} {% endif %}
+      </span>
+    </header>
+    {% if message.attachments %}
+    <div class="message-attachments">
+      {% for attachment in message.attachments %} {% if attachment.url %}
+      <a
+        href="{{ attachment.url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="attachment-link"
+        >{{ attachment.label }}</a
+      >
+      {% else %}
+      <span class="attachment-link attachment-missing"
+        >{{ attachment.label }}</span
+      >
+      {% endif %} {% endfor %}
+    </div>
+    {% endif %} {% if conversation.platform == 'gemini' and message.role ==
+    'assistant' and message.html_content %}
+    <div class="message-html">{{ message.html_content|safe }}</div>
+    {% elif message.role == 'user' %}
+    <div class="message-body">
+      {{ message.display_content|render_plain_text }}
+    </div>
+    {% else %}
+    <div class="message-markdown">
+      {{ message.display_content|render_message_content }}
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
 </section>
 {% else %}
 <section class="panel">
-    <p class="empty">
-        {% if conversation.platform == 'gemini' %}
-        {{ t('conversation_empty_gemini') }}
-        {% else %}
-        {{ t('conversation_empty_default') }}
-        {% endif %}
-    </p>
+  <p class="empty">
+    {% if conversation.platform == 'gemini' %} {{ t('conversation_empty_gemini')
+    }} {% else %} {{ t('conversation_empty_default') }} {% endif %}
+  </p>
 </section>
 {% endif %}
-{% endblock %}
-{% block extra_scripts %}
+<a
+  href="#page-top"
+  class="back-to-top-fab"
+  aria-label="{{ t('back_to_top') }}"
+  title="{{ t('back_to_top') }}"
+>
+  <svg
+    class="back-to-top-icon"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <line x1="5" y1="4" x2="19" y2="4" />
+    <line x1="12" y1="20" x2="12" y2="9" />
+    <polyline points="6 14 12 9 18 14" />
+  </svg>
+</a>
+{% endblock %} {% block extra_scripts %}
 <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-    mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "loose",
-        theme: "base",
-        flowchart: {
-            htmlLabels: true
-        },
-        themeVariables: {
-            primaryColor: "#d7f3ef",
-            primaryBorderColor: "#0f766e",
-            primaryTextColor: "#1f2933",
-            lineColor: "#5f6c7b",
-            secondaryColor: "#f7efe3",
-            tertiaryColor: "#fffdf8",
-            fontFamily: "Georgia, Times New Roman, serif"
-        }
-    });
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "loose",
+    theme: "base",
+    flowchart: {
+      htmlLabels: true,
+    },
+    themeVariables: {
+      primaryColor: "#d7f3ef",
+      primaryBorderColor: "#0f766e",
+      primaryTextColor: "#1f2933",
+      lineColor: "#5f6c7b",
+      secondaryColor: "#f7efe3",
+      tertiaryColor: "#fffdf8",
+      fontFamily: "Georgia, Times New Roman, serif",
+    },
+  });
 
-    const nodes = document.querySelectorAll(".mermaid");
-    if (nodes.length > 0) {
-        try {
-            await mermaid.run({ nodes });
-        } catch (error) {
-            console.error("Mermaid render failed:", error);
-        }
+  const nodes = document.querySelectorAll(".mermaid");
+  if (nodes.length > 0) {
+    try {
+      await mermaid.run({ nodes });
+    } catch (error) {
+      console.error("Mermaid render failed:", error);
     }
+  }
 </script>
 {% endblock %}

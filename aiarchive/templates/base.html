@@ -1,35 +1,235 @@
-<!DOCTYPE html>
-<html lang="{{ lang_attr }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<!doctype html>
+<html lang="{{ lang_attr }}" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}{{ t('site_title') }}{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
-</head>
-<body>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}" />
+  </head>
+  <body>
     <header class="site-header">
-        <div class="wrap">
-            <div class="site-header-row">
-                <div>
-                    <a class="brand" href="/">{{ t('site_title') }}</a>
-                    <p class="tagline">{{ t('tagline') }}</p>
-                </div>
-                <div class="language-switcher" aria-label="{{ t('language_label') }}">
-                    {% for code, label in languages.items() %}
-                    <a href="{{ language_switch_urls[code] }}" class="language-link {% if lang == code %}language-link-active{% endif %}">{{ label }}</a>
-                    {% endfor %}
-                </div>
-            </div>
+      <div class="wrap">
+        <div class="site-header-row">
+          <div>
+            <a class="brand" href="/">{{ t('site_title') }}</a>
+            <p class="tagline">{{ t('tagline') }}</p>
+          </div>
+          <button
+            type="button"
+            class="settings-trigger"
+            aria-label="{{ t('open_settings') }}"
+            title="{{ t('open_settings') }}"
+            data-settings-open
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              class="settings-trigger-icon"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+              />
+            </svg>
+          </button>
         </div>
+      </div>
     </header>
-    <main class="wrap">
-        <nav class="function-bar">
-            <a href="/import" class="function-link {% if nav_current == 'import' %}function-link-active{% endif %}">{{ t('nav_import') }}</a>
-            <a href="/browse" class="function-link {% if nav_current == 'browse' %}function-link-active{% endif %}">{{ t('nav_browse') }}</a>
-            <a href="/search" class="function-link {% if nav_current == 'search' %}function-link-active{% endif %}">{{ t('nav_search') }}</a>
-        </nav>
-        {% block content %}{% endblock %}
+    <main id="page-top" class="wrap">
+      <nav class="function-bar">
+        <a
+          href="/import"
+          class="function-link {% if nav_current == 'import' %}function-link-active{% endif %}"
+          >{{ t('nav_import') }}</a
+        >
+        <a
+          href="/browse"
+          class="function-link {% if nav_current == 'browse' %}function-link-active{% endif %}"
+          >{{ t('nav_browse') }}</a
+        >
+        <a
+          href="/search"
+          class="function-link {% if nav_current == 'search' %}function-link-active{% endif %}"
+          >{{ t('nav_search') }}</a
+        >
+      </nav>
+      {% block content %}{% endblock %}
     </main>
+    <div class="settings-modal" data-settings-modal hidden>
+      <div class="settings-backdrop" data-settings-close></div>
+      <section
+        class="settings-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+      >
+        <div class="settings-panel-head">
+          <h2 id="settings-title">{{ t('settings_title') }}</h2>
+          <button
+            type="button"
+            class="settings-close"
+            aria-label="{{ t('settings_close') }}"
+            title="{{ t('settings_close') }}"
+            data-settings-close
+          >
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="settings-layout">
+          <nav class="settings-nav" aria-label="{{ t('settings_title') }}">
+            <button
+              type="button"
+              class="settings-nav-item settings-nav-item-active"
+              data-settings-panel="language"
+            >
+              {{ t('settings_language') }}
+            </button>
+            <button
+              type="button"
+              class="settings-nav-item"
+              data-settings-panel="theme"
+            >
+              {{ t('settings_theme') }}
+            </button>
+          </nav>
+          <div class="settings-content">
+            <section
+              class="settings-section settings-section-active"
+              data-settings-section="language"
+            >
+              <h3>{{ t('settings_language') }}</h3>
+              <div class="settings-option-list">
+                {% for code, label in languages.items() %}
+                <a
+                  href="{{ language_switch_urls[code] }}"
+                  class="settings-option {% if lang == code %}settings-option-active{% endif %}"
+                >
+                  <span>{{ label }}</span>
+                </a>
+                {% endfor %}
+              </div>
+            </section>
+            <section class="settings-section" data-settings-section="theme">
+              <h3>{{ t('settings_theme') }}</h3>
+              <div class="settings-option-list">
+                <button
+                  type="button"
+                  class="settings-option"
+                  data-theme-option="light"
+                >
+                  <span>{{ t('theme_light') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="settings-option"
+                  data-theme-option="dark"
+                >
+                  <span>{{ t('theme_dark') }}</span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const storageKey = "aiarchive-theme";
+        const modal = document.querySelector("[data-settings-modal]");
+        const openButton = document.querySelector("[data-settings-open]");
+        const closeButtons = document.querySelectorAll("[data-settings-close]");
+        const navButtons = document.querySelectorAll("[data-settings-panel]");
+        const sections = document.querySelectorAll("[data-settings-section]");
+        const themeButtons = document.querySelectorAll("[data-theme-option]");
+
+        function applyTheme(theme) {
+          const normalized = theme === "dark" ? "dark" : "light";
+          root.setAttribute("data-theme", normalized);
+          try {
+            window.localStorage.setItem(storageKey, normalized);
+          } catch (error) {
+            console.error("Theme persistence failed:", error);
+          }
+
+          themeButtons.forEach((button) => {
+            button.classList.toggle(
+              "settings-option-active",
+              button.dataset.themeOption === normalized,
+            );
+          });
+        }
+
+        function openModal(panelName = "language") {
+          if (!modal) {
+            return;
+          }
+          modal.hidden = false;
+          document.body.classList.add("modal-open");
+          activatePanel(panelName);
+        }
+
+        function closeModal() {
+          if (!modal) {
+            return;
+          }
+          modal.hidden = true;
+          document.body.classList.remove("modal-open");
+        }
+
+        function activatePanel(panelName) {
+          navButtons.forEach((button) => {
+            button.classList.toggle(
+              "settings-nav-item-active",
+              button.dataset.settingsPanel === panelName,
+            );
+          });
+          sections.forEach((section) => {
+            section.classList.toggle(
+              "settings-section-active",
+              section.dataset.settingsSection === panelName,
+            );
+          });
+        }
+
+        const savedTheme = (() => {
+          try {
+            return window.localStorage.getItem(storageKey);
+          } catch (error) {
+            return null;
+          }
+        })();
+        applyTheme(savedTheme || "light");
+
+        openButton?.addEventListener("click", () => openModal("language"));
+        closeButtons.forEach((button) => {
+          button.addEventListener("click", closeModal);
+        });
+
+        navButtons.forEach((button) => {
+          button.addEventListener("click", () =>
+            activatePanel(button.dataset.settingsPanel),
+          );
+        });
+
+        themeButtons.forEach((button) => {
+          button.addEventListener("click", () =>
+            applyTheme(button.dataset.themeOption),
+          );
+        });
+
+        window.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && modal && !modal.hidden) {
+            closeModal();
+          }
+        });
+      })();
+    </script>
     {% block extra_scripts %}{% endblock %}
-</body>
+  </body>
 </html>

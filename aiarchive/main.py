@@ -151,6 +151,7 @@ TRANSLATIONS = {
         "page_fraction": "Page {page} / {total_pages}",
         "prev_page": "Previous",
         "next_page": "Next",
+        "back_to_top": "Back to Top",
         "no_search_results": "No conversations matched the current filters.",
         "search_empty_prompt": "Enter a keyword or choose filters to start searching.",
         "browse_platform": "Browse {platform}",
@@ -235,6 +236,7 @@ TRANSLATIONS = {
         "page_fraction": "第 {page} / {total_pages} 页",
         "prev_page": "上一页",
         "next_page": "下一页",
+        "back_to_top": "回到顶部",
         "no_search_results": "当前筛选条件下没有匹配的会话。",
         "search_empty_prompt": "请输入关键词或选择筛选条件后再开始搜索。",
         "browse_platform": "浏览 {platform}",
@@ -283,6 +285,28 @@ TRANSLATIONS["zh"].update(
 
 TRANSLATIONS["zh"]["choose_file"] = "选择文件"
 TRANSLATIONS["zh"]["no_file_chosen"] = "未选择文件"
+TRANSLATIONS["en"].update(
+    {
+        "open_settings": "Open Settings",
+        "settings_title": "Settings",
+        "settings_close": "Close Settings",
+        "settings_language": "Language",
+        "settings_theme": "Theme",
+        "theme_light": "Light",
+        "theme_dark": "Dark",
+    }
+)
+TRANSLATIONS["zh"].update(
+    {
+        "open_settings": "打开设置",
+        "settings_title": "设置",
+        "settings_close": "关闭设置",
+        "settings_language": "语言",
+        "settings_theme": "主题",
+        "theme_light": "亮色",
+        "theme_dark": "暗色",
+    }
+)
 
 
 def _to_system_local(value: str) -> datetime | None:
