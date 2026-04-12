@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}导入{% endblock %}
+{% block title %}{{ t('import_page_title') }}{% endblock %}
 {% block content %}
 <section class="panel">
-    <h1>导入导出文件</h1>
-    <p class="page-intro">上传各平台导出的 ZIP 文件并合并到本地档案。Gemini 使用原始 Google Takeout ZIP，DeepSeek 从根目录读取 <code>conversations.json</code>，Grok 会自动定位 <code>prod-grok-backend.json</code> 及同级附件。</p>
+    <h1>{{ t('import_heading') }}</h1>
+    <p class="page-intro">{{ t('import_intro') }}</p>
     <form method="post" action="/import" enctype="multipart/form-data" class="import-form">
         <label>
-            <span>平台</span>
+            <span>{{ t('platform_label') }}</span>
             <select name="platform" required>
                 {% for value in platforms %}
                 <option value="{{ value }}">{{ value|capitalize }}</option>
@@ -14,18 +14,18 @@
             </select>
         </label>
         <label>
-            <span>导出文件</span>
+            <span>{{ t('export_file_label') }}</span>
             <input type="file" name="file" accept=".zip,application/zip" required>
         </label>
-        <button type="submit">开始导入</button>
+        <button type="submit">{{ t('start_import') }}</button>
     </form>
     {% if filters.imported %}
-    <p class="notice">导入完成。</p>
+    <p class="notice">{{ t('import_complete') }}</p>
     {% endif %}
 </section>
 
 <section class="panel">
-    <h2>最近导入</h2>
+    <h2>{{ t('recent_imports') }}</h2>
     {% if imports %}
     <ul class="import-list">
         {% for item in imports %}
@@ -36,14 +36,14 @@
                 <span>{{ item.imported_at|datetime_display }}</span>
             </div>
             <div class="conversation-meta">
-                <span>{{ item.conversations_inserted }}/{{ item.conversations_seen }} 条会话</span>
-                <span>{{ item.messages_inserted }}/{{ item.messages_seen }} 条消息</span>
+                <span>{{ item.conversations_inserted }}/{{ item.conversations_seen }} {{ t('conversations_label') }}</span>
+                <span>{{ item.messages_inserted }}/{{ item.messages_seen }} {{ t('messages_label') }}</span>
             </div>
         </li>
         {% endfor %}
     </ul>
     {% else %}
-    <p class="empty">还没有导入记录。</p>
+    <p class="empty">{{ t('no_import_records') }}</p>
     {% endif %}
 </section>
 {% endblock %}

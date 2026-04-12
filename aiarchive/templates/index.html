@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% block title %}AI 对话档案{% endblock %}
+{% block title %}{{ t('site_title') }}{% endblock %}
 {% block content %}
 <section class="hero-panel">
     <div class="hero-copy">
-        <h1>AI 对话档案</h1>
-        <p class="page-intro">用轻量的 FastAPI 和 SQLite，本地归档 OpenAI、Gemini、Grok、DeepSeek 的导出记录，并支持全文检索。</p>
+        <h1>{{ t('hero_title') }}</h1>
+        <p class="page-intro">{{ t('hero_intro') }}</p>
     </div>
     <div class="hero-actions">
-        <a href="/import" class="hero-link">前往导入</a>
-        <a href="/browse" class="hero-link">前往浏览</a>
-        <a href="/search" class="hero-link">前往搜索</a>
+        <a href="/import" class="hero-link">{{ t('go_import') }}</a>
+        <a href="/browse" class="hero-link">{{ t('go_browse') }}</a>
+        <a href="/search" class="hero-link">{{ t('go_search') }}</a>
     </div>
 </section>
 
 <section class="layout">
     <div class="panel">
-        <h2>平台概览</h2>
+        <h2>{{ t('platform_overview') }}</h2>
         <div class="platform-grid">
             {% for item in platform_overview %}
             <a href="/platforms/{{ item.platform }}" class="platform-card">
@@ -24,14 +24,14 @@
                     <span class="platform">{{ item.platform }}</span>
                 </div>
                 <div class="conversation-meta">
-                    <span>{{ item.conversation_count }} 条会话</span>
-                    <span>{{ item.message_count }} 条消息</span>
+                    <span>{{ item.conversation_count }} {{ t('conversations_label') }}</span>
+                    <span>{{ item.message_count }} {{ t('messages_label') }}</span>
                 </div>
                 <p class="snippet">
                     {% if item.latest_message_at %}
-                    最近活动 {{ item.latest_message_at|datetime_display }}
+                    {{ t('latest_activity', value=item.latest_message_at|datetime_display) }}
                     {% else %}
-                    还没有导入会话
+                    {{ t('no_imported_conversations') }}
                     {% endif %}
                 </p>
             </a>
@@ -40,7 +40,7 @@
     </div>
 
     <div class="panel">
-        <h2>最近导入</h2>
+        <h2>{{ t('recent_imports') }}</h2>
         {% if imports %}
         <ul class="import-list">
             {% for item in imports %}
@@ -51,14 +51,14 @@
                     <span>{{ item.imported_at|datetime_display }}</span>
                 </div>
                 <div class="conversation-meta">
-                    <span>{{ item.conversations_inserted }}/{{ item.conversations_seen }} 条会话</span>
-                    <span>{{ item.messages_inserted }}/{{ item.messages_seen }} 条消息</span>
+                    <span>{{ item.conversations_inserted }}/{{ item.conversations_seen }} {{ t('conversations_label') }}</span>
+                    <span>{{ item.messages_inserted }}/{{ item.messages_seen }} {{ t('messages_label') }}</span>
                 </div>
             </li>
             {% endfor %}
         </ul>
         {% else %}
-        <p class="empty">还没有导入记录。</p>
+        <p class="empty">{{ t('no_import_records') }}</p>
         {% endif %}
     </div>
 </section>

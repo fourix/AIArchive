@@ -45,6 +45,14 @@ a:hover {
     backdrop-filter: blur(8px);
 }
 
+.site-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
 .brand {
     display: inline-block;
     font-size: 1.7rem;
@@ -55,6 +63,38 @@ a:hover {
 .tagline {
     margin: 0.35rem 0 0;
     color: var(--muted);
+}
+
+.language-switcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 253, 248, 0.9);
+}
+
+.language-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    color: var(--muted);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.language-link:hover {
+    text-decoration: none;
+    color: var(--accent);
+}
+
+.language-link-active {
+    background: linear-gradient(180deg, rgba(215, 243, 239, 0.8), rgba(255, 253, 248, 0.98));
+    color: var(--accent);
 }
 
 .panel {

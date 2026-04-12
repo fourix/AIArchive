@@ -3,20 +3,20 @@
 {% block content %}
 <section class="panel">
     <div class="detail-actions">
-        <a href="/" class="button-link">返回档案首页</a>
+        <a href="/" class="button-link">{{ t('back_to_home') }}</a>
         {% if browse_location %}
-        <a href="{{ browse_location.url }}" class="button-link">返回 {{ browse_location.platform|capitalize }} 列表</a>
-        <span class="detail-hint">定位到第 {{ browse_location.page }} 页当前会话位置</span>
+        <a href="{{ browse_location.url }}" class="button-link">{{ t('back_to_platform_list', platform=browse_location.platform|capitalize) }}</a>
+        <span class="detail-hint">{{ t('back_to_platform_hint', page=browse_location.page) }}</span>
         {% endif %}
     </div>
     <h1>{{ conversation.title }}</h1>
-    {% if ui.note %}
-    <p class="page-intro">{{ ui.note }}</p>
+    {% if conversation.platform == 'gemini' %}
+    <p class="page-intro">{{ t('gemini_note') }}</p>
     {% endif %}
     <div class="conversation-meta">
         <span>{{ conversation.platform }}</span>
-        <span>{{ conversation.message_count }} 条消息</span>
-        <span>更新于 {{ conversation.updated_at|datetime_display }}</span>
+        <span>{{ conversation.message_count }} {{ t('messages_label') }}</span>
+        <span>{{ t('conversation_updated', value=conversation.updated_at|datetime_display) }}</span>
     </div>
 </section>
 
@@ -58,9 +58,9 @@
 <section class="panel">
     <p class="empty">
         {% if conversation.platform == 'gemini' %}
-        这条 Gemini 记录导入时没有填充消息正文。请使用当前版本导入器重新导入 Gemini 数据。
+        {{ t('conversation_empty_gemini') }}
         {% else %}
-        这个会话暂时没有保存任何消息。
+        {{ t('conversation_empty_default') }}
         {% endif %}
     </p>
 </section>

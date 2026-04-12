@@ -45,6 +45,148 @@ app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
 templates = Jinja2Templates(directory=settings.templates_dir)
 
+DEFAULT_LANGUAGE = "en"
+SUPPORTED_LANGUAGES = {
+    "en": "English",
+    "zh": "中文",
+}
+LANGUAGE_ATTR = {
+    "en": "en",
+    "zh": "zh-CN",
+}
+TRANSLATIONS = {
+    "en": {
+        "site_title": "AI Chat Archive",
+        "tagline": "A local, searchable archive for multi-platform AI conversation history.",
+        "nav_import": "Import",
+        "nav_browse": "Browse",
+        "nav_search": "Search",
+        "language_label": "Language",
+        "home": "Home",
+        "import_page_title": "Import",
+        "import_heading": "Import Export Files",
+        "import_intro": "Upload ZIP exports from supported platforms and merge them into your local archive. Gemini uses the original Google Takeout ZIP, DeepSeek reads conversations.json from the archive root, and Grok automatically finds prod-grok-backend.json and its sibling attachments.",
+        "platform_label": "Platform",
+        "export_file_label": "Export File",
+        "start_import": "Start Import",
+        "import_complete": "Import complete.",
+        "recent_imports": "Recent Imports",
+        "no_import_records": "No imports yet.",
+        "hero_title": "AI Chat Archive",
+        "hero_intro": "Archive official exports from OpenAI, Gemini, Grok, and DeepSeek into a lightweight FastAPI and SQLite system with full-text search.",
+        "go_import": "Go to Import",
+        "go_browse": "Go to Browse",
+        "go_search": "Go to Search",
+        "platform_overview": "Platform Overview",
+        "latest_activity": "Latest activity {value}",
+        "no_imported_conversations": "No imported conversations yet",
+        "browse_title": "Browse",
+        "browse_heading": "Browse by Platform",
+        "browse_intro": "Open a platform to browse all archived conversations, or clear one platform during development.",
+        "purged_notice": "Cleared all archived data for {platform}.",
+        "clear_platform_data": "Clear {platform} Data",
+        "clear_platform_confirm": "Clear all archived data for {platform}?",
+        "search_title": "Search",
+        "search_heading": "Search Conversations",
+        "search_intro": "Search across imported message text and filter by platform and date.",
+        "keyword_label": "Keyword",
+        "search_placeholder": "Search message text",
+        "all_platforms": "All",
+        "start_date_label": "Start Date",
+        "end_date_label": "End Date",
+        "apply_filters": "Apply Filters",
+        "search_results": "Search Results",
+        "page_summary": "Page {page} of {total_pages}. {total} total.",
+        "page_fraction": "Page {page} / {total_pages}",
+        "prev_page": "Previous",
+        "next_page": "Next",
+        "no_search_results": "No conversations matched the current filters.",
+        "search_empty_prompt": "Enter a keyword or choose filters to start searching.",
+        "browse_platform": "Browse {platform}",
+        "back_to_home": "Back to archive home",
+        "records_label": "Records",
+        "record_label": "record",
+        "conversations_label": "conversations",
+        "conversation_label": "conversation",
+        "messages_label": "messages",
+        "message_label": "message",
+        "gemini_note": "Gemini exports are stored as standalone activity records rather than threaded conversations.",
+        "record_time": "Recorded {value}",
+        "first_message": "First message {value}",
+        "no_platform_items": "No {item_label} found for this platform and date range.",
+        "conversation_updated": "Updated {value}",
+        "back_to_platform_list": "Back to {platform} list",
+        "back_to_platform_hint": "Jump to page {page} and the current conversation",
+        "conversation_empty_gemini": "This Gemini record has no message body stored. Re-import the Gemini export with the current importer.",
+        "conversation_empty_default": "This conversation has no saved messages yet.",
+    },
+    "zh": {
+        "site_title": "AI 对话档案",
+        "tagline": "本地保存、可检索的多平台 AI 对话历史。",
+        "nav_import": "导入",
+        "nav_browse": "浏览",
+        "nav_search": "搜索",
+        "language_label": "语言",
+        "home": "首页",
+        "import_page_title": "导入",
+        "import_heading": "导入导出文件",
+        "import_intro": "上传各平台导出的 ZIP 文件并合并到本地档案。Gemini 使用原始 Google Takeout ZIP，DeepSeek 从压缩包根目录读取 conversations.json，Grok 会自动定位 prod-grok-backend.json 及同级附件。",
+        "platform_label": "平台",
+        "export_file_label": "导出文件",
+        "start_import": "开始导入",
+        "import_complete": "导入完成。",
+        "recent_imports": "最近导入",
+        "no_import_records": "还没有导入记录。",
+        "hero_title": "AI 对话档案",
+        "hero_intro": "使用轻量的 FastAPI 和 SQLite，把 OpenAI、Gemini、Grok、DeepSeek 的官方导出归档到本地，并支持全文检索。",
+        "go_import": "前往导入",
+        "go_browse": "前往浏览",
+        "go_search": "前往搜索",
+        "platform_overview": "平台概览",
+        "latest_activity": "最近活动 {value}",
+        "no_imported_conversations": "还没有导入会话",
+        "browse_title": "浏览",
+        "browse_heading": "按平台浏览",
+        "browse_intro": "打开某个平台查看全部归档会话，也可以在开发阶段清空单个平台的数据。",
+        "purged_notice": "已清空 {platform} 的全部归档数据。",
+        "clear_platform_data": "清空 {platform} 数据",
+        "clear_platform_confirm": "确认清空 {platform} 的全部归档数据？",
+        "search_title": "搜索",
+        "search_heading": "搜索会话",
+        "search_intro": "搜索所有已导入平台中的消息文本，并按平台与日期筛选。",
+        "keyword_label": "关键词",
+        "search_placeholder": "搜索消息文本",
+        "all_platforms": "全部",
+        "start_date_label": "开始日期",
+        "end_date_label": "结束日期",
+        "apply_filters": "应用筛选",
+        "search_results": "搜索结果",
+        "page_summary": "第 {page} 页，共 {total_pages} 页，总计 {total} 条。",
+        "page_fraction": "第 {page} / {total_pages} 页",
+        "prev_page": "上一页",
+        "next_page": "下一页",
+        "no_search_results": "当前筛选条件下没有匹配的会话。",
+        "search_empty_prompt": "请输入关键词或选择筛选条件后再开始搜索。",
+        "browse_platform": "浏览 {platform}",
+        "back_to_home": "返回档案首页",
+        "records_label": "记录",
+        "record_label": "记录",
+        "conversations_label": "会话",
+        "conversation_label": "会话",
+        "messages_label": "条消息",
+        "message_label": "消息",
+        "gemini_note": "Gemini 导出以独立活动记录存储，不是线程式会话结构。",
+        "record_time": "记录时间 {value}",
+        "first_message": "首条消息 {value}",
+        "no_platform_items": "当前平台与日期范围下没有可显示的{item_label}。",
+        "conversation_updated": "更新于 {value}",
+        "back_to_platform_list": "返回 {platform} 列表",
+        "back_to_platform_hint": "定位到第 {page} 页当前会话位置",
+        "conversation_empty_gemini": "这条 Gemini 记录导入时没有填充消息正文。请使用当前版本导入器重新导入 Gemini 数据。",
+        "conversation_empty_default": "这个会话暂时没有保存任何消息。",
+    },
+}
+
 
 def _to_system_local(value: str) -> datetime | None:
     if not value:
@@ -80,6 +222,53 @@ def format_month_day_time(value: str) -> str:
     if localized is None:
         return ""
     return localized.strftime("%m-%d %H:%M")
+
+
+def resolve_language(request: Request) -> str:
+    query_lang = request.query_params.get("lang", "").strip().lower()
+    if query_lang in SUPPORTED_LANGUAGES:
+        return query_lang
+
+    cookie_lang = request.cookies.get("lang", "").strip().lower()
+    if cookie_lang in SUPPORTED_LANGUAGES:
+        return cookie_lang
+
+    return DEFAULT_LANGUAGE
+
+
+def make_translator(language: str):
+    catalog = TRANSLATIONS.get(language, TRANSLATIONS[DEFAULT_LANGUAGE])
+
+    def translate(key: str, **kwargs: object) -> str:
+        text = catalog.get(key) or TRANSLATIONS[DEFAULT_LANGUAGE].get(key) or key
+        return text.format(**kwargs) if kwargs else text
+
+    return translate
+
+
+def build_language_switch_urls(request: Request) -> dict[str, str]:
+    return {code: str(request.url.include_query_params(lang=code)) for code in SUPPORTED_LANGUAGES}
+
+
+def template_response(
+    request: Request,
+    template_name: str,
+    context: dict[str, object],
+) -> HTMLResponse:
+    language = resolve_language(request)
+    merged_context = {
+        **context,
+        "request": request,
+        "lang": language,
+        "lang_attr": LANGUAGE_ATTR.get(language, LANGUAGE_ATTR[DEFAULT_LANGUAGE]),
+        "t": make_translator(language),
+        "languages": SUPPORTED_LANGUAGES,
+        "language_switch_urls": build_language_switch_urls(request),
+    }
+    response = templates.TemplateResponse(request, template_name, merged_context)
+    if request.query_params.get("lang", "").strip().lower() in SUPPORTED_LANGUAGES:
+        response.set_cookie("lang", language, max_age=31536000, samesite="lax")
+    return response
 
 
 def _highlight_terms(query: str) -> list[str]:
@@ -250,11 +439,10 @@ def index(
         imports = list_recent_imports(connection)
         platform_overview = list_platform_overview(connection)
 
-    return templates.TemplateResponse(
+    return template_response(
         request,
         "index.html",
         {
-            "request": request,
             "imports": imports,
             "platform_overview": platform_overview,
             "platforms": supported_platforms(),
@@ -277,11 +465,10 @@ def import_page(
     with get_connection() as connection:
         imports = list_recent_imports(connection)
 
-    return templates.TemplateResponse(
+    return template_response(
         request,
         "import.html",
         {
-            "request": request,
             "imports": imports,
             "platforms": supported_platforms(),
             "filters": {
@@ -303,11 +490,10 @@ def browse_page(
     with get_connection() as connection:
         platform_overview = list_platform_overview(connection)
 
-    return templates.TemplateResponse(
+    return template_response(
         request,
         "browse.html",
         {
-            "request": request,
             "platform_overview": platform_overview,
             "filters": {
                 "purged": purged,
@@ -349,11 +535,10 @@ def search_page(
             page_size=100,
         )
 
-    return templates.TemplateResponse(
+    return template_response(
         request,
         "search.html",
         {
-            "request": request,
             "conversations": conversations_page.items,
             "pagination": {
                 "page": conversations_page.page,
@@ -483,11 +668,10 @@ def platform_browse(
             page=page,
         )
 
-    return templates.TemplateResponse(
+    return template_response(
         request,
         "platform.html",
         {
-            "request": request,
             "platform": normalized_platform,
             "conversations": conversations_page.items,
             "pagination": {
@@ -498,7 +682,6 @@ def platform_browse(
                 "total": conversations_page.total,
                 "page_size": conversations_page.page_size,
             },
-            "ui": platform_ui_context(normalized_platform),
             "filters": {
                 "date_from": date_from,
                 "date_to": date_to,
@@ -544,15 +727,13 @@ def conversation_detail(request: Request, conversation_id: int):
         browse_location = get_platform_browse_location(connection, conversation_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return templates.TemplateResponse(
+    return template_response(
         request,
         "conversation.html",
         {
-            "request": request,
             "conversation": payload["conversation"],
             "messages": payload["messages"],
             "browse_location": browse_location,
-            "ui": platform_ui_context(str(payload["conversation"]["platform"])),
             "nav_current": "",
         },
     )

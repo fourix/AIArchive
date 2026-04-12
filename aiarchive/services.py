@@ -286,6 +286,7 @@ def _persist_import(
 
         for message in conversation.messages:
             messages_seen += 1
+            created_at = format_utc_datetime(message.created_at)
             before = connection.total_changes
             connection.execute(
                 """
@@ -300,7 +301,7 @@ def _persist_import(
                     message.source_message_id,
                     message.role,
                     message.content,
-                    format_utc_datetime(message.created_at),
+                    created_at,
                     message.sequence_no,
                     _message_hash(conversation, message),
                     message.metadata_json,
@@ -309,6 +310,26 @@ def _persist_import(
             if connection.total_changes > before:
                 messages_inserted += 1
             else:
+                existing_row = connection.execute(
+                    """
+                    SELECT role, content, created_at, sequence_no, metadata_json
+                    FROM messages
+                    WHERE conversation_id = ? AND source_message_id = ?
+                    """,
+                    (conversation_id, message.source_message_id),
+                ).fetchone()
+                if existing_row is None:
+                    continue
+
+                if (
+                    existing_row["role"] == message.role
+                    and existing_row["content"] == message.content
+                    and existing_row["created_at"] == created_at
+                    and int(existing_row["sequence_no"]) == message.sequence_no
+                    and existing_row["metadata_json"] == message.metadata_json
+                ):
+                    continue
+
                 connection.execute(
                     """
                     UPDATE messages
@@ -323,7 +344,7 @@ def _persist_import(
                     (
                         message.role,
                         message.content,
-                        format_utc_datetime(message.created_at),
+                        created_at,
                         message.sequence_no,
                         message.metadata_json,
                         conversation_id,
