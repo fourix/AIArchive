@@ -15,7 +15,11 @@
         </label>
         <label>
             <span>{{ t('export_file_label') }}</span>
-            <input type="file" name="file" accept=".zip,application/zip" required>
+            <div class="file-input-wrap">
+                <input id="import-file-input" class="file-input-native" type="file" name="file" accept=".zip,application/zip" required>
+                <button type="button" class="file-input-button" data-file-trigger="import-file-input">{{ t('choose_file') }}</button>
+                <span class="file-input-name" data-file-name>{{ t('no_file_chosen') }}</span>
+            </div>
         </label>
         <button type="submit">{{ t('start_import') }}</button>
     </form>
@@ -49,4 +53,25 @@
     <p class="empty">{{ t('no_import_records') }}</p>
     {% endif %}
 </section>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+    document.querySelectorAll("[data-file-trigger]").forEach((button) => {
+        const inputId = button.getAttribute("data-file-trigger");
+        const input = document.getElementById(inputId);
+        const nameNode = button.parentElement?.querySelector("[data-file-name]");
+        if (!input || !nameNode) {
+            return;
+        }
+
+        button.addEventListener("click", () => input.click());
+        input.addEventListener("change", () => {
+            if (input.files && input.files.length > 0) {
+                nameNode.textContent = input.files[0].name;
+            } else {
+                nameNode.textContent = "{{ t('no_file_chosen') }}";
+            }
+        });
+    });
+</script>
 {% endblock %}

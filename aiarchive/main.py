@@ -116,6 +116,8 @@ TRANSLATIONS = {
         "import_intro": "Upload ZIP exports from supported platforms and merge them into your local archive. Gemini uses the original Google Takeout ZIP, DeepSeek reads conversations.json from the archive root, and Grok automatically finds prod-grok-backend.json and its sibling attachments.",
         "platform_label": "Platform",
         "export_file_label": "Export File",
+        "choose_file": "Choose File",
+        "no_file_chosen": "No file chosen",
         "start_import": "Start Import",
         "import_complete": "Import complete.",
         "import_failed": "Import failed: {message}",
@@ -278,6 +280,9 @@ TRANSLATIONS["zh"].update(
         "error_grok_missing_json": "Grok ZIP 中缺少 prod-grok-backend.json",
     }
 )
+
+TRANSLATIONS["zh"]["choose_file"] = "选择文件"
+TRANSLATIONS["zh"]["no_file_chosen"] = "未选择文件"
 
 
 def _to_system_local(value: str) -> datetime | None:

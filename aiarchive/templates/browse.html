@@ -9,26 +9,28 @@
     {% endif %}
     <div class="platform-grid">
         {% for item in platform_overview %}
-        <a href="/platforms/{{ item.platform }}" class="platform-card">
-            <div class="conversation-head">
-                <strong>{{ item.platform|capitalize }}</strong>
-                <span class="platform">{{ item.platform }}</span>
-            </div>
-            <div class="conversation-meta">
-                <span>{{ item.conversation_count }} {{ t('conversations_label') }}</span>
-                <span>{{ item.message_count }} {{ t('messages_label') }}</span>
-            </div>
-            <p class="snippet">
-                {% if item.latest_message_at %}
-                {{ t('latest_activity', value=item.latest_message_at|datetime_display) }}
-                {% else %}
-                {{ t('no_imported_conversations') }}
-                {% endif %}
-            </p>
-        </a>
-        <form method="post" action="/platforms/{{ item.platform }}/purge" class="platform-purge-form" onsubmit="return confirm('{{ t('clear_platform_confirm', platform=item.platform|capitalize) }}');">
-            <button type="submit" class="danger-button">{{ t('clear_platform_data', platform=item.platform|capitalize) }}</button>
-        </form>
+        <section class="platform-card platform-card-shell">
+            <a href="/platforms/{{ item.platform }}" class="platform-card-link">
+                <div class="conversation-head">
+                    <strong>{{ item.platform|capitalize }}</strong>
+                    <span class="platform">{{ item.platform }}</span>
+                </div>
+                <div class="conversation-meta">
+                    <span>{{ item.conversation_count }} {{ t('conversations_label') }}</span>
+                    <span>{{ item.message_count }} {{ t('messages_label') }}</span>
+                </div>
+                <p class="snippet">
+                    {% if item.latest_message_at %}
+                    {{ t('latest_activity', value=item.latest_message_at|datetime_display) }}
+                    {% else %}
+                    {{ t('no_imported_conversations') }}
+                    {% endif %}
+                </p>
+            </a>
+            <form method="post" action="/platforms/{{ item.platform }}/purge" class="platform-purge-form" onsubmit="return confirm('{{ t('clear_platform_confirm', platform=item.platform|capitalize) }}');">
+                <button type="submit" class="subtle-danger-button">{{ t('clear_platform_data', platform=item.platform|capitalize) }}</button>
+            </form>
+        </section>
         {% endfor %}
     </div>
 </section>
