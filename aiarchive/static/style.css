@@ -346,6 +346,12 @@ mark {
     color: #166534;
 }
 
+.error-notice {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
 .empty {
     color: var(--muted);
 }
@@ -635,6 +641,19 @@ mark {
 
 .pager-status {
     color: var(--muted);
+}
+
+.error-panel {
+    max-width: 720px;
+}
+
+.error-code {
+    margin: 0;
+    color: var(--accent);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 @media (max-width: 860px) {

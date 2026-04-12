@@ -9,7 +9,7 @@
             <span>{{ t('platform_label') }}</span>
             <select name="platform" required>
                 {% for value in platforms %}
-                <option value="{{ value }}">{{ value|capitalize }}</option>
+                <option value="{{ value }}" {% if filters.platform == value %}selected{% endif %}>{{ value|capitalize }}</option>
                 {% endfor %}
             </select>
         </label>
@@ -19,6 +19,9 @@
         </label>
         <button type="submit">{{ t('start_import') }}</button>
     </form>
+    {% if filters.error %}
+    <p class="notice error-notice">{{ t('import_failed', message=filters.error) }}</p>
+    {% endif %}
     {% if filters.imported %}
     <p class="notice">{{ t('import_complete') }}</p>
     {% endif %}

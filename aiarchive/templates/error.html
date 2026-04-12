@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ t('error_page_title') }}{% endblock %}
+{% block content %}
+<section class="panel error-panel">
+    <p class="error-code">{{ status_code }}</p>
+    <h1>{{ error_heading }}</h1>
+    <p class="page-intro">{{ error_message }}</p>
+    <p><a href="/" class="button-link">{{ t('error_back_home') }}</a></p>
+</section>
+{% endblock %}

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import quote, unquote, urlencode
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
@@ -45,7 +46,54 @@ app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
 templates = Jinja2Templates(directory=settings.templates_dir)
 
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if wants_json(request):
+        language = resolve_language(request)
+        detail = exc.detail if isinstance(exc.detail, str) else make_translator(language)("error_default_message")
+        return JSONResponse(status_code=exc.status_code, content={"detail": localize_error_message(language, detail)})
+
+    language = resolve_language(request)
+    translate = make_translator(language)
+    detail = exc.detail if isinstance(exc.detail, str) else translate("error_default_message")
+    message = localize_error_message(language, detail)
+    response = template_response(
+        request,
+        "error.html",
+        {
+            "status_code": exc.status_code,
+            "error_heading": translate(error_heading_key(exc.status_code)),
+            "error_message": message,
+            "nav_current": "",
+        },
+    )
+    response.status_code = exc.status_code
+    return response
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    if wants_json(request):
+        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+    language = resolve_language(request)
+    translate = make_translator(language)
+    response = template_response(
+        request,
+        "error.html",
+        {
+            "status_code": 500,
+            "error_heading": translate("error_heading_500"),
+            "error_message": translate("error_default_message"),
+            "nav_current": "",
+        },
+    )
+    response.status_code = 500
+    return response
+
 DEFAULT_LANGUAGE = "en"
+FLASH_IMPORT_ERROR_COOKIE = "aiarchive_import_error"
 SUPPORTED_LANGUAGES = {
     "en": "English",
     "zh": "中文",
@@ -70,6 +118,7 @@ TRANSLATIONS = {
         "export_file_label": "Export File",
         "start_import": "Start Import",
         "import_complete": "Import complete.",
+        "import_failed": "Import failed: {message}",
         "recent_imports": "Recent Imports",
         "no_import_records": "No imports yet.",
         "hero_title": "AI Chat Archive",
@@ -119,6 +168,25 @@ TRANSLATIONS = {
         "back_to_platform_hint": "Jump to page {page} and the current conversation",
         "conversation_empty_gemini": "This Gemini record has no message body stored. Re-import the Gemini export with the current importer.",
         "conversation_empty_default": "This conversation has no saved messages yet.",
+        "error_page_title": "Error",
+        "error_heading_400": "Request Error",
+        "error_heading_403": "Forbidden",
+        "error_heading_404": "Not Found",
+        "error_heading_500": "Something Went Wrong",
+        "error_default_message": "The request could not be completed.",
+        "error_back_home": "Back to Home",
+        "error_platform_not_found": "Platform not found",
+        "error_conversation_not_found": "Conversation not found",
+        "error_uploaded_file_empty": "Uploaded file is empty",
+        "error_invalid_zip": "Uploaded file is not a valid ZIP archive",
+        "error_gemini_requires_takeout": "Gemini import requires the original Google Takeout ZIP file",
+        "error_gemini_not_export": "This ZIP does not look like a Gemini Takeout export",
+        "error_deepseek_not_export": "This ZIP does not look like a DeepSeek export",
+        "error_grok_not_export": "This ZIP does not look like a Grok export",
+        "error_zip_platform_mismatch": "This ZIP does not match the selected platform",
+        "error_gemini_missing_json": "Gemini Takeout ZIP is missing the expected Gemini Apps activity JSON file",
+        "error_deepseek_missing_json": "DeepSeek ZIP is missing conversations.json at the archive root",
+        "error_grok_missing_json": "Grok ZIP is missing prod-grok-backend.json",
     },
     "zh": {
         "site_title": "AI 对话档案",
@@ -186,6 +254,30 @@ TRANSLATIONS = {
         "conversation_empty_default": "这个会话暂时没有保存任何消息。",
     },
 }
+
+TRANSLATIONS["zh"].update(
+    {
+        "error_page_title": "错误",
+        "error_heading_400": "请求错误",
+        "error_heading_403": "禁止访问",
+        "error_heading_404": "页面不存在",
+        "error_heading_500": "发生错误",
+        "error_default_message": "请求未能完成。",
+        "error_back_home": "返回首页",
+        "error_platform_not_found": "平台不存在",
+        "error_conversation_not_found": "会话不存在",
+        "error_uploaded_file_empty": "上传文件为空",
+        "error_invalid_zip": "上传的文件不是有效的 ZIP 压缩包",
+        "error_gemini_requires_takeout": "Gemini 导入需要原始 Google Takeout ZIP 文件",
+        "error_gemini_not_export": "这个 ZIP 看起来不像 Gemini Takeout 导出文件",
+        "error_deepseek_not_export": "这个 ZIP 看起来不像 DeepSeek 导出文件",
+        "error_grok_not_export": "这个 ZIP 看起来不像 Grok 导出文件",
+        "error_zip_platform_mismatch": "这个 ZIP 与当前选择的平台不匹配",
+        "error_gemini_missing_json": "Gemini Takeout ZIP 中缺少预期的 Gemini Apps 活动 JSON 文件",
+        "error_deepseek_missing_json": "DeepSeek ZIP 根目录缺少 conversations.json",
+        "error_grok_missing_json": "Grok ZIP 中缺少 prod-grok-backend.json",
+    }
+)
 
 
 def _to_system_local(value: str) -> datetime | None:
@@ -269,6 +361,45 @@ def template_response(
     if request.query_params.get("lang", "").strip().lower() in SUPPORTED_LANGUAGES:
         response.set_cookie("lang", language, max_age=31536000, samesite="lax")
     return response
+
+
+def wants_json(request: Request) -> bool:
+    if request.url.path.startswith("/api/"):
+        return True
+    accept = request.headers.get("accept", "")
+    return "application/json" in accept and "text/html" not in accept
+
+
+def error_heading_key(status_code: int) -> str:
+    return {
+        400: "error_heading_400",
+        403: "error_heading_403",
+        404: "error_heading_404",
+        500: "error_heading_500",
+    }.get(status_code, "error_page_title")
+
+
+def localize_error_message(language: str, message: str) -> str:
+    if not message:
+        return make_translator(language)("error_default_message")
+
+    translate = make_translator(language)
+    mapping = {
+        "Platform not found": "error_platform_not_found",
+        "Conversation not found": "error_conversation_not_found",
+        "Uploaded file is empty": "error_uploaded_file_empty",
+        "Uploaded file is not a valid ZIP archive": "error_invalid_zip",
+        "Gemini import requires the original Google Takeout ZIP file": "error_gemini_requires_takeout",
+        "This ZIP does not look like a Gemini Takeout export": "error_gemini_not_export",
+        "This ZIP does not look like a DeepSeek export": "error_deepseek_not_export",
+        "This ZIP does not look like a Grok export": "error_grok_not_export",
+        "This ZIP does not match the selected platform": "error_zip_platform_mismatch",
+        "Gemini Takeout ZIP is missing the expected Gemini Apps activity JSON file": "error_gemini_missing_json",
+        "DeepSeek ZIP is missing conversations.json at the archive root": "error_deepseek_missing_json",
+        "Grok ZIP is missing prod-grok-backend.json": "error_grok_missing_json",
+    }
+    key = mapping.get(message)
+    return translate(key) if key else message
 
 
 def _highlight_terms(query: str) -> list[str]:
@@ -465,7 +596,8 @@ def import_page(
     with get_connection() as connection:
         imports = list_recent_imports(connection)
 
-    return template_response(
+    flash_error = unquote(request.cookies.get(FLASH_IMPORT_ERROR_COOKIE, ""))
+    response = template_response(
         request,
         "import.html",
         {
@@ -473,12 +605,16 @@ def import_page(
             "platforms": supported_platforms(),
             "filters": {
                 "imported": imported,
+                "error": flash_error,
                 "purged": purged,
                 "platform": platform,
             },
             "nav_current": "import",
         },
     )
+    if flash_error:
+        response.delete_cookie(FLASH_IMPORT_ERROR_COOKIE)
+    return response
 
 
 @app.get("/browse", response_class=HTMLResponse)
@@ -564,6 +700,7 @@ def search_page(
 
 @app.post("/import")
 async def import_json(
+    request: Request,
     platform: str = Form(...),
     file: UploadFile = File(...),
 ):
@@ -592,9 +729,24 @@ async def import_json(
                     raw=raw,
                 )
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            current_lang = resolve_language(request)
+            query = {"platform": normalized_platform}
+            if current_lang != DEFAULT_LANGUAGE:
+                query["lang"] = current_lang
+            response = RedirectResponse(url=f"/import?{urlencode(query)}", status_code=303)
+            response.set_cookie(
+                FLASH_IMPORT_ERROR_COOKIE,
+                quote(localize_error_message(current_lang, str(exc)), safe=""),
+                max_age=60,
+                samesite="lax",
+            )
+            return response
 
-    return RedirectResponse(url="/import?imported=1", status_code=303)
+    query = {"imported": "1"}
+    current_lang = resolve_language(request)
+    if current_lang != DEFAULT_LANGUAGE:
+        query["lang"] = current_lang
+    return RedirectResponse(url=f"/import?{urlencode(query)}", status_code=303)
 
 
 @app.post("/platforms/{platform}/purge")

@@ -310,47 +310,10 @@ def _persist_import(
             if connection.total_changes > before:
                 messages_inserted += 1
             else:
-                existing_row = connection.execute(
-                    """
-                    SELECT role, content, created_at, sequence_no, metadata_json
-                    FROM messages
-                    WHERE conversation_id = ? AND source_message_id = ?
-                    """,
-                    (conversation_id, message.source_message_id),
-                ).fetchone()
-                if existing_row is None:
-                    continue
-
-                if (
-                    existing_row["role"] == message.role
-                    and existing_row["content"] == message.content
-                    and existing_row["created_at"] == created_at
-                    and int(existing_row["sequence_no"]) == message.sequence_no
-                    and existing_row["metadata_json"] == message.metadata_json
-                ):
-                    continue
-
-                connection.execute(
-                    """
-                    UPDATE messages
-                    SET
-                        role = ?,
-                        content = ?,
-                        created_at = ?,
-                        sequence_no = ?,
-                        metadata_json = ?
-                    WHERE conversation_id = ? AND source_message_id = ?
-                    """,
-                    (
-                        message.role,
-                        message.content,
-                        created_at,
-                        message.sequence_no,
-                        message.metadata_json,
-                        conversation_id,
-                        message.source_message_id,
-                    ),
-                )
+                # Existing messages are treated as immutable archive entries.
+                # This keeps repeated imports idempotent and avoids unnecessary
+                # FTS churn for already-archived records.
+                continue
 
     connection.execute(
         """
@@ -901,18 +864,14 @@ def _looks_like_zip_upload(filename: str, raw: bytes) -> bool:
 def _zip_contains_platform_signature(platform: str, raw: bytes) -> bool:
     try:
         with _open_zip_with_fallbacks(raw) as archive:
-            member_names = {PurePosixPath(info.filename).name for info in archive.infolist() if not info.is_dir()}
-            member_paths = {tuple(PurePosixPath(info.filename).parts) for info in archive.infolist() if not info.is_dir()}
+            member_names = [PurePosixPath(info.filename).name for info in archive.infolist() if not info.is_dir()]
     except (UnicodeDecodeError, zipfile.BadZipFile, ValueError):
         return False
 
     if platform == "gemini":
-        return (
-            ("Takeout", "我的活动", "Gemini Apps", "我的活动记录.json") in member_paths
-            or ("Takeout", "My Activity", "Gemini Apps", "My Activity.json") in member_paths
-        )
+        return any(_is_gemini_activity_json_name(name) for name in member_names)
     if platform == "deepseek":
-        return ("conversations.json",) in member_paths
+        return "conversations.json" in member_names
     if platform == "grok":
         return "prod-grok-backend.json" in member_names
     return False
@@ -932,23 +891,37 @@ def _validate_zip_matches_platform(platform: str, raw: bytes) -> None:
         raise ValueError("This ZIP does not match the selected platform")
 
 
+def _is_gemini_activity_json_name(filename: str) -> bool:
+    normalized = (filename or "").strip().casefold()
+    if not normalized.endswith(".json"):
+        return False
+    stems = {
+        "my activity.json",
+        "我的活动记录.json",
+        "gemini apps activity.json",
+        "gemini activity.json",
+    }
+    if normalized in {name.casefold() for name in stems}:
+        return True
+    return "activity" in normalized or "活动" in normalized
+
+
+def _is_gemini_activity_json(member_path: PurePosixPath) -> bool:
+    if not _is_gemini_activity_json_name(member_path.name):
+        return False
+
+    parent_parts = [part.casefold() for part in member_path.parts[:-1]]
+    return "gemini apps" in parent_parts
+
+
 def _extract_gemini_takeout_zip(raw: bytes, destination_root: Path) -> Path:
     destination_root.mkdir(parents=True, exist_ok=True)
-    expected_parts = (
-        "Takeout",
-        "\u6211\u7684\u6d3b\u52a8",
-        "Gemini Apps",
-    )
-    json_filename = "\u6211\u7684\u6d3b\u52a8\u8bb0\u5f55.json"
     extracted_json_path: Path | None = None
 
     with _open_zip_with_fallbacks(raw) as archive:
         for info in archive.infolist():
             member_path = PurePosixPath(info.filename)
             if info.is_dir() or not member_path.parts:
-                continue
-
-            if tuple(member_path.parts[: len(expected_parts)]) != expected_parts:
                 continue
 
             relative_path = Path(*member_path.parts)
@@ -960,7 +933,7 @@ def _extract_gemini_takeout_zip(raw: bytes, destination_root: Path) -> Path:
             with archive.open(info, "r") as source, target_path.open("wb") as target:
                 shutil.copyfileobj(source, target)
 
-            if member_path.name == json_filename:
+            if _is_gemini_activity_json(member_path):
                 extracted_json_path = target_path
 
     if extracted_json_path is None:
@@ -1194,7 +1167,7 @@ def _copy_gemini_assets(
     html_content: str,
 ) -> tuple[str, list[dict[str, str]]]:
     source_dir = source_path.parent
-    target_dir = settings.media_dir / platform / file_sha / conversation_id
+    target_dir = settings.media_dir / platform / file_sha
     target_dir.mkdir(parents=True, exist_ok=True)
 
     attachments: list[dict[str, str]] = []
@@ -1220,7 +1193,7 @@ def _copy_gemini_assets(
         if not target_file.exists():
             shutil.copy2(source_file, target_file)
 
-        relative_url = f"/media/{platform}/{file_sha}/{conversation_id}/{safe_name}"
+        relative_url = f"/media/{platform}/{file_sha}/{safe_name}"
         copied_by_name[normalized_name] = relative_url
         seen.add(normalized_name)
         attachments.append({"filename": safe_name, "url": relative_url})
@@ -1241,7 +1214,7 @@ def _copy_named_attachments(
         return [attachment for attachment in attachments if isinstance(attachment, dict)]
 
     source_dir = source_path.parent
-    target_dir = settings.media_dir / platform / file_sha / conversation_id
+    target_dir = settings.media_dir / platform / file_sha
     target_dir.mkdir(parents=True, exist_ok=True)
 
     copied: list[dict[str, str]] = []
@@ -1272,7 +1245,7 @@ def _copy_named_attachments(
             {
                 "filename": source_file.name,
                 "label": str(attachment.get("label") or source_file.name),
-                "url": f"/media/{platform}/{file_sha}/{conversation_id}/{source_file.name}",
+                "url": f"/media/{platform}/{file_sha}/{source_file.name}",
             }
         )
     return copied
