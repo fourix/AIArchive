@@ -109,10 +109,10 @@ a:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 12px;
     background: color-mix(in srgb, var(--card) 78%, transparent 22%);
     color: var(--muted);
     box-shadow: 0 8px 24px rgba(31, 41, 51, 0.08);
@@ -128,11 +128,11 @@ a:hover {
 }
 
 .settings-trigger-icon {
-    width: 18px;
-    height: 18px;
-    fill: none;
-    stroke: currentColor;
+    display: block;
+    font-size: 1.28rem;
+    line-height: 1;
     flex-shrink: 0;
+    transform: translateY(-0.5px);
 }
 
 .modal-open {
@@ -956,10 +956,34 @@ mark {
 }
 
 .back-to-top-icon {
+    position: relative;
     display: block;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     flex-shrink: 0;
+}
+
+.back-to-top-icon::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 999px;
+}
+
+.back-to-top-icon::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 4px;
+    width: 9px;
+    height: 9px;
+    border-top: 2px solid currentColor;
+    border-left: 2px solid currentColor;
+    transform: rotate(45deg);
 }
 
 @media (max-width: 640px) {
