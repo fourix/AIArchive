@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import mimetypes
 import re
 import shutil
 import tempfile
@@ -91,6 +92,8 @@ def supported_platforms() -> list[str]:
 
 def import_file(connection: Connection, platform: str, filename: str, raw: bytes) -> ImportResult:
     importer = get_importer(platform)
+    if importer.platform == "openai" and _looks_like_zip_upload(filename, raw):
+        return import_openai_export_zip(connection, filename, raw)
     if importer.platform == "gemini" and _looks_like_zip_upload(filename, raw):
         return import_gemini_takeout_zip(connection, filename, raw)
     if importer.platform == "grok" and _looks_like_zip_upload(filename, raw):
@@ -107,10 +110,17 @@ def import_file(connection: Connection, platform: str, filename: str, raw: bytes
 
 def import_file_from_path(connection: Connection, platform: str, json_path: str) -> ImportResult:
     source_path = Path(json_path).expanduser().resolve()
-    if not source_path.is_file():
+    if not source_path.exists():
         raise ValueError(f"Import file not found: {json_path}")
 
     importer = get_importer(platform)
+    if importer.platform == "openai":
+        if source_path.is_dir():
+            return import_openai_export_directory(connection, source_path.name, source_path)
+        if source_path.suffix.lower() == ".zip":
+            return import_openai_export_zip(connection, source_path.name, source_path.read_bytes())
+        if _looks_like_openai_export_file(source_path.name):
+            return import_openai_export_directory(connection, source_path.parent.name, source_path.parent)
     if importer.platform == "gemini" and source_path.suffix.lower() == ".zip":
         return import_gemini_takeout_zip(connection, source_path.name, source_path.read_bytes())
     if importer.platform == "grok" and source_path.suffix.lower() == ".zip":
@@ -133,6 +143,8 @@ def import_file_with_uploaded_assets(
     uploaded_assets: dict[str, bytes],
 ) -> ImportResult:
     importer = get_importer(platform)
+    if importer.platform == "openai" and _looks_like_zip_upload(filename, raw):
+        return import_openai_export_zip(connection, filename, raw)
     if importer.platform == "gemini" and _looks_like_zip_upload(filename, raw):
         return import_gemini_takeout_zip(connection, filename, raw)
     if importer.platform == "grok" and _looks_like_zip_upload(filename, raw):
@@ -145,6 +157,43 @@ def import_file_with_uploaded_assets(
     conversations = _parse_import_bytes(importer, raw)
     _prepare_platform_assets_from_uploads(conversations, importer.platform, file_sha, uploaded_assets)
     return _persist_import(connection, importer.platform, filename, file_sha, conversations)
+
+
+def import_openai_export_directory(connection: Connection, filename: str, source_root: Path) -> ImportResult:
+    importer = get_importer("openai")
+    export_root = _locate_openai_export_root(source_root)
+    file_sha = stable_hash("openai_directory", str(export_root))
+    payload = _load_openai_export_payload(export_root)
+    source_marker = export_root / "export_manifest.json"
+    if not source_marker.is_file():
+        source_marker = export_root
+    conversations = importer.parse_payload(payload, source_path=source_marker)
+    _prepare_platform_assets(conversations, importer.platform, file_sha, source_marker)
+    return _persist_import(connection, importer.platform, filename, file_sha, conversations)
+
+
+def import_openai_export_zip(connection: Connection, filename: str, raw: bytes) -> ImportResult:
+    importer = get_importer("openai")
+    file_sha = sha256_bytes(raw)
+
+    _validate_zip_matches_platform("openai", raw)
+
+    with tempfile.TemporaryDirectory(prefix="openai_export_", dir=settings.imports_dir) as temp_dir:
+        extracted_root = Path(temp_dir)
+        try:
+            export_root = _extract_openai_export_zip(raw, extracted_root)
+        except UnicodeDecodeError as exc:
+            raise ValueError("Could not read filenames inside the OpenAI ZIP archive") from exc
+        except zipfile.BadZipFile as exc:
+            raise ValueError("Uploaded OpenAI file is not a valid ZIP archive") from exc
+
+        payload = _load_openai_export_payload(export_root)
+        source_marker = export_root / "export_manifest.json"
+        if not source_marker.is_file():
+            source_marker = export_root
+        conversations = importer.parse_payload(payload, source_path=source_marker)
+        _prepare_platform_assets(conversations, importer.platform, file_sha, source_marker)
+        return _persist_import(connection, importer.platform, filename, file_sha, conversations)
 
 
 def import_gemini_takeout_zip(connection: Connection, filename: str, raw: bytes) -> ImportResult:
@@ -855,10 +904,24 @@ def _load_metadata(raw: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _read_json_file(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 def _looks_like_zip_upload(filename: str, raw: bytes) -> bool:
     if raw.startswith(b"PK\x03\x04") or raw.startswith(b"PK\x05\x06") or raw.startswith(b"PK\x07\x08"):
         return True
     return Path(filename or "").suffix.lower() == ".zip"
+
+
+def _looks_like_openai_export_file(filename: str) -> bool:
+    normalized = Path(filename or "").name.casefold()
+    if normalized == "export_manifest.json":
+        return True
+    if normalized == "conversations.json":
+        return True
+    return bool(re.fullmatch(r"conversations-\d+\.json", normalized))
 
 
 def _zip_contains_platform_signature(platform: str, raw: bytes) -> bool:
@@ -874,6 +937,8 @@ def _zip_contains_platform_signature(platform: str, raw: bytes) -> bool:
         return "conversations.json" in member_names
     if platform == "grok":
         return "prod-grok-backend.json" in member_names
+    if platform == "openai":
+        return any(_looks_like_openai_export_file(name) for name in member_names)
     return False
 
 
@@ -888,6 +953,8 @@ def _validate_zip_matches_platform(platform: str, raw: bytes) -> None:
             raise ValueError("This ZIP does not look like a DeepSeek export")
         if platform == "grok":
             raise ValueError("This ZIP does not look like a Grok export")
+        if platform == "openai":
+            raise ValueError("This ZIP does not look like an OpenAI ChatGPT export")
         raise ValueError("This ZIP does not match the selected platform")
 
 
@@ -940,6 +1007,66 @@ def _extract_gemini_takeout_zip(raw: bytes, destination_root: Path) -> Path:
         raise ValueError("Gemini Takeout ZIP is missing the expected Gemini Apps activity JSON file")
 
     return extracted_json_path
+
+
+def _extract_openai_export_zip(raw: bytes, destination_root: Path) -> Path:
+    _extract_zip_to_directory(raw, destination_root)
+    return _locate_openai_export_root(destination_root)
+
+
+def _locate_openai_export_root(source_root: Path) -> Path:
+    if source_root.is_file():
+        source_root = source_root.parent
+
+    manifest_matches = [path for path in source_root.rglob("export_manifest.json") if path.is_file()]
+    if manifest_matches:
+        manifest_matches.sort()
+        return manifest_matches[0].parent
+
+    conversation_matches = [path for path in source_root.rglob("conversations.json") if path.is_file()]
+    conversation_matches.extend(path for path in source_root.rglob("conversations-*.json") if path.is_file())
+    if conversation_matches:
+        conversation_matches.sort()
+        return conversation_matches[0].parent
+
+    raise ValueError("OpenAI export is missing export_manifest.json or conversations JSON shards")
+
+
+def _load_openai_export_payload(export_root: Path) -> list[Any]:
+    conversations: list[Any] = []
+
+    manifest_path = export_root / "export_manifest.json"
+    manifest = _read_json_file(manifest_path) if manifest_path.is_file() else {}
+    logical_files = manifest.get("logical_files") if isinstance(manifest, dict) else None
+
+    shard_names: list[str] = []
+    if isinstance(logical_files, dict):
+        conversations_entry = logical_files.get("conversations.json")
+        if isinstance(conversations_entry, dict):
+            shard_names = [str(name) for name in conversations_entry.get("files") or [] if str(name).strip()]
+
+    if not shard_names:
+        shard_names = [path.name for path in sorted(export_root.glob("conversations-*.json")) if path.is_file()]
+
+    if not shard_names and (export_root / "conversations.json").is_file():
+        shard_names = ["conversations.json"]
+
+    if not shard_names:
+        raise ValueError("OpenAI export is missing conversation JSON shards")
+
+    for shard_name in shard_names:
+        shard_path = export_root / shard_name
+        if not shard_path.is_file():
+            raise ValueError(f"OpenAI export is missing shard file: {shard_name}")
+        shard_payload = _read_json_file(shard_path)
+        if isinstance(shard_payload, list):
+            conversations.extend(shard_payload)
+        elif isinstance(shard_payload, dict):
+            conversations.extend(shard_payload.get("conversations") or shard_payload.get("items") or [shard_payload])
+        else:
+            raise ValueError(f"OpenAI shard has unsupported JSON shape: {shard_name}")
+
+    return conversations
 
 
 def _extract_grok_export_zip(raw: bytes, destination_root: Path) -> Path:
@@ -1041,6 +1168,10 @@ def _prepare_platform_assets(
     file_sha: str,
     source_path: Path | None,
 ) -> None:
+    if platform == "openai":
+        _prepare_openai_assets(conversations, file_sha, source_path)
+        return
+
     if platform == "grok":
         _prepare_grok_assets(conversations, file_sha, source_path)
         return
@@ -1084,6 +1215,237 @@ def _prepare_platform_assets(
                     metadata["attachments"] = merged
 
             message.metadata_json = json.dumps(metadata, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
+def _prepare_openai_assets(
+    conversations: list[NormalizedConversation],
+    file_sha: str,
+    source_path: Path | None,
+) -> None:
+    if source_path is None:
+        return
+
+    export_root = source_path.parent if source_path.is_file() else source_path
+    file_lookup, label_lookup = _build_openai_asset_lookup(export_root)
+
+    for conversation in conversations:
+        for message in conversation.messages:
+            metadata = _load_metadata(message.metadata_json)
+            existing_attachments = metadata.get("attachments", [])
+            if isinstance(existing_attachments, list) and existing_attachments:
+                metadata["attachments"] = _copy_openai_attachments(
+                    file_sha=file_sha,
+                    conversation_id=conversation.source_conversation_id,
+                    attachments=existing_attachments,
+                    file_lookup=file_lookup,
+                    label_lookup=label_lookup,
+                )
+            elif "attachments" not in metadata:
+                metadata["attachments"] = []
+
+            message.metadata_json = json.dumps(metadata, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
+def _build_openai_asset_lookup(export_root: Path) -> tuple[dict[str, Path], dict[str, str]]:
+    file_lookup: dict[str, Path] = {}
+    label_lookup: dict[str, str] = {}
+
+    manifest_path = export_root / "export_manifest.json"
+    manifest = _read_json_file(manifest_path) if manifest_path.is_file() else {}
+    logical_files = manifest.get("logical_files") if isinstance(manifest, dict) else {}
+
+    name_map_path = export_root / "conversation_asset_file_names.json"
+    if name_map_path.is_file():
+        raw_name_map = _read_json_file(name_map_path)
+        if isinstance(raw_name_map, dict):
+            for key, value in raw_name_map.items():
+                key_text = str(key).strip()
+                value_text = str(value).strip()
+                if key_text and value_text:
+                    label_lookup[key_text] = value_text
+                    label_lookup[Path(key_text).stem] = value_text
+
+    for path in export_root.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(export_root).as_posix()
+        file_lookup.setdefault(relative, path)
+        file_lookup.setdefault(path.name, path)
+        file_lookup.setdefault(path.stem, path)
+
+    if isinstance(logical_files, dict):
+        for logical_name, entry in logical_files.items():
+            if not isinstance(entry, dict):
+                continue
+            files = entry.get("files") or []
+            for file_name in files:
+                candidate = export_root / str(file_name)
+                if not candidate.is_file():
+                    continue
+                logical_text = str(logical_name).strip()
+                if logical_text:
+                    file_lookup.setdefault(logical_text, candidate)
+                    file_lookup.setdefault(Path(logical_text).name, candidate)
+                    file_lookup.setdefault(Path(logical_text).stem, candidate)
+
+    return file_lookup, label_lookup
+
+
+def _copy_openai_attachments(
+    file_sha: str,
+    conversation_id: str,
+    attachments: list[Any],
+    file_lookup: dict[str, Path],
+    label_lookup: dict[str, str],
+) -> list[dict[str, str]]:
+    target_dir = settings.media_dir / "openai" / file_sha / conversation_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    copied: list[dict[str, str]] = []
+    seen: set[str] = set()
+    used_names: set[str] = set()
+
+    for attachment in attachments:
+        if not isinstance(attachment, dict):
+            continue
+
+        source_id = str(attachment.get("source_id") or attachment.get("filename") or "").strip()
+        if not source_id or source_id in seen:
+            continue
+        seen.add(source_id)
+
+        source_file = _resolve_openai_attachment_source(source_id, attachment, file_lookup)
+        label = _resolve_openai_attachment_label(source_id, attachment, source_file, label_lookup)
+
+        if source_file is None or not source_file.is_file():
+            copied.append(
+                {
+                    "filename": source_id,
+                    "label": label,
+                    "url": "",
+                }
+            )
+            continue
+
+        saved_name = _unique_attachment_name(
+            _choose_openai_saved_name(source_id, label, attachment, source_file),
+            used_names,
+        )
+        target_file = target_dir / saved_name
+        if not target_file.exists():
+            shutil.copy2(source_file, target_file)
+
+        copied.append(
+            {
+                "filename": saved_name,
+                "label": label,
+                "url": f"/media/openai/{file_sha}/{conversation_id}/{saved_name}",
+            }
+        )
+    return copied
+
+
+def _resolve_openai_attachment_source(
+    source_id: str,
+    attachment: dict[str, Any],
+    file_lookup: dict[str, Path],
+) -> Path | None:
+    candidates = [
+        str(attachment.get("filename") or "").strip(),
+        str(attachment.get("source_name") or "").strip(),
+        str(attachment.get("source_path") or "").strip(),
+        source_id,
+        f"{source_id}.dat" if not source_id.endswith(".dat") else "",
+    ]
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        normalized = candidate.replace("\\", "/").strip()
+        path = file_lookup.get(normalized) or file_lookup.get(Path(normalized).name) or file_lookup.get(Path(normalized).stem)
+        if path is not None and path.is_file():
+            return path
+    return None
+
+
+def _resolve_openai_attachment_label(
+    source_id: str,
+    attachment: dict[str, Any],
+    source_file: Path | None,
+    label_lookup: dict[str, str],
+) -> str:
+    label = str(attachment.get("label") or "").strip()
+    if label:
+        return Path(label).name or label
+
+    lookup_candidates = [source_id]
+    if source_file is not None:
+        lookup_candidates.extend([source_file.name, source_file.stem])
+
+    for candidate in lookup_candidates:
+        mapped = label_lookup.get(candidate)
+        if mapped:
+            return Path(mapped).name or mapped
+
+    if source_file is not None:
+        return source_file.name
+    return source_id
+
+
+def _choose_openai_saved_name(
+    source_id: str,
+    label: str,
+    attachment: dict[str, Any],
+    source_file: Path,
+) -> str:
+    preferred = Path(label).name.strip() or source_file.name
+    preferred = _sanitize_attachment_name(preferred)
+
+    mime_type = str(attachment.get("mime_type") or "").strip()
+    if Path(preferred).suffix:
+        return preferred
+
+    extension = _guess_extension_from_mime(mime_type) or _guess_extension_from_source(source_file)
+    if extension:
+        return f"{preferred}{extension}"
+
+    return f"{preferred}{source_file.suffix}" if source_file.suffix else preferred
+
+
+def _sanitize_attachment_name(value: str) -> str:
+    cleaned = Path(value).name.strip()
+    cleaned = re.sub(r"[<>:\"/\\\\|?*\x00-\x1f]", "_", cleaned)
+    return cleaned or "attachment"
+
+
+def _unique_attachment_name(value: str, used_names: set[str]) -> str:
+    candidate = value
+    stem = Path(value).stem
+    suffix = Path(value).suffix
+    index = 2
+    while candidate.casefold() in used_names:
+        candidate = f"{stem}-{index}{suffix}"
+        index += 1
+    used_names.add(candidate.casefold())
+    return candidate
+
+
+def _guess_extension_from_mime(value: str) -> str:
+    if not value:
+        return ""
+    guessed = mimetypes.guess_extension(value, strict=False) or ""
+    if guessed == ".jpe":
+        return ".jpg"
+    return guessed
+
+
+def _guess_extension_from_source(source_file: Path) -> str:
+    if source_file.suffix and source_file.suffix.lower() != ".dat":
+        return source_file.suffix
+    try:
+        return _detect_attachment_extension(source_file.read_bytes())
+    except OSError:
+        return ""
 
 
 def _prepare_grok_assets(

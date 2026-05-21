@@ -646,6 +646,7 @@ mark {
     gap: 0.9rem;
     padding-bottom: 2rem;
     align-items: start;
+    min-width: 0;
 }
 
 .browse-head {
@@ -694,6 +695,8 @@ mark {
     padding: 1rem;
     background: var(--card);
     width: min(74%, 820px);
+    max-width: 100%;
+    min-width: 0;
     align-self: start;
 }
 
@@ -728,11 +731,15 @@ mark {
 
 .message-body {
     margin: 0.85rem 0 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .message-body pre {
     white-space: pre-wrap;
     margin: 0;
+    max-width: 100%;
     font-family: "Courier New", monospace;
     font-size: 0.95rem;
     line-height: 1.5;
@@ -751,7 +758,10 @@ mark {
 
 .message-html {
     margin: 0.85rem 0 0;
+    min-width: 0;
     line-height: 1.65;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .message-html img,
@@ -777,7 +787,10 @@ mark {
 
 .message-markdown {
     margin: 0.85rem 0 0;
+    min-width: 0;
     line-height: 1.7;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .message-markdown > :first-child {
@@ -811,6 +824,7 @@ mark {
 }
 
 .message-markdown pre {
+    max-width: 100%;
     padding: 0.95rem 1rem;
     border-radius: 12px;
     background: rgba(31, 41, 51, 0.06);

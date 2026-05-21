@@ -113,7 +113,7 @@ TRANSLATIONS = {
         "home": "Home",
         "import_page_title": "Import",
         "import_heading": "Import Export Files",
-        "import_intro": "Upload ZIP exports from supported platforms and merge them into your local archive. Gemini uses the original Google Takeout ZIP, DeepSeek reads conversations.json from the archive root, and Grok automatically finds prod-grok-backend.json and its sibling attachments.",
+        "import_intro": "Upload ZIP exports from supported platforms and merge them into your local archive. OpenAI supports ChatGPT export ZIP files with sharded conversations and bundled attachments, Gemini uses the original Google Takeout ZIP, DeepSeek reads conversations.json from the archive root, and Grok automatically finds prod-grok-backend.json and its sibling attachments.",
         "platform_label": "Platform",
         "export_file_label": "Export File",
         "choose_file": "Choose File",
@@ -186,10 +186,12 @@ TRANSLATIONS = {
         "error_gemini_not_export": "This ZIP does not look like a Gemini Takeout export",
         "error_deepseek_not_export": "This ZIP does not look like a DeepSeek export",
         "error_grok_not_export": "This ZIP does not look like a Grok export",
+        "error_openai_not_export": "This ZIP does not look like an OpenAI ChatGPT export",
         "error_zip_platform_mismatch": "This ZIP does not match the selected platform",
         "error_gemini_missing_json": "Gemini Takeout ZIP is missing the expected Gemini Apps activity JSON file",
         "error_deepseek_missing_json": "DeepSeek ZIP is missing conversations.json at the archive root",
         "error_grok_missing_json": "Grok ZIP is missing prod-grok-backend.json",
+        "error_openai_missing_json": "OpenAI export is missing export_manifest.json or conversations JSON shards",
     },
     "zh": {
         "site_title": "AI 对话档案",
@@ -201,7 +203,7 @@ TRANSLATIONS = {
         "home": "首页",
         "import_page_title": "导入",
         "import_heading": "导入导出文件",
-        "import_intro": "上传各平台导出的 ZIP 文件并合并到本地档案。Gemini 使用原始 Google Takeout ZIP，DeepSeek 从压缩包根目录读取 conversations.json，Grok 会自动定位 prod-grok-backend.json 及同级附件。",
+        "import_intro": "上传各平台导出的 ZIP 文件并合并到本地档案。OpenAI 支持带分片 conversations 和附件的 ChatGPT 导出 ZIP，Gemini 使用原始 Google Takeout ZIP，DeepSeek 从压缩包根目录读取 conversations.json，Grok 会自动定位 prod-grok-backend.json 及同级附件。",
         "platform_label": "平台",
         "export_file_label": "导出文件",
         "start_import": "开始导入",
@@ -276,10 +278,12 @@ TRANSLATIONS["zh"].update(
         "error_gemini_not_export": "这个 ZIP 看起来不像 Gemini Takeout 导出文件",
         "error_deepseek_not_export": "这个 ZIP 看起来不像 DeepSeek 导出文件",
         "error_grok_not_export": "这个 ZIP 看起来不像 Grok 导出文件",
+        "error_openai_not_export": "这个 ZIP 看起来不像 OpenAI ChatGPT 导出文件",
         "error_zip_platform_mismatch": "这个 ZIP 与当前选择的平台不匹配",
         "error_gemini_missing_json": "Gemini Takeout ZIP 中缺少预期的 Gemini Apps 活动 JSON 文件",
         "error_deepseek_missing_json": "DeepSeek ZIP 根目录缺少 conversations.json",
         "error_grok_missing_json": "Grok ZIP 中缺少 prod-grok-backend.json",
+        "error_openai_missing_json": "OpenAI 导出中缺少 export_manifest.json 或 conversations 分片 JSON",
     }
 )
 
@@ -418,14 +422,18 @@ def localize_error_message(language: str, message: str) -> str:
         "Conversation not found": "error_conversation_not_found",
         "Uploaded file is empty": "error_uploaded_file_empty",
         "Uploaded file is not a valid ZIP archive": "error_invalid_zip",
+        "Uploaded OpenAI file is not a valid ZIP archive": "error_invalid_zip",
         "Gemini import requires the original Google Takeout ZIP file": "error_gemini_requires_takeout",
         "This ZIP does not look like a Gemini Takeout export": "error_gemini_not_export",
         "This ZIP does not look like a DeepSeek export": "error_deepseek_not_export",
         "This ZIP does not look like a Grok export": "error_grok_not_export",
+        "This ZIP does not look like an OpenAI ChatGPT export": "error_openai_not_export",
         "This ZIP does not match the selected platform": "error_zip_platform_mismatch",
         "Gemini Takeout ZIP is missing the expected Gemini Apps activity JSON file": "error_gemini_missing_json",
         "DeepSeek ZIP is missing conversations.json at the archive root": "error_deepseek_missing_json",
         "Grok ZIP is missing prod-grok-backend.json": "error_grok_missing_json",
+        "OpenAI export is missing export_manifest.json or conversations JSON shards": "error_openai_missing_json",
+        "Could not read filenames inside the OpenAI ZIP archive": "error_invalid_zip",
     }
     key = mapping.get(message)
     return translate(key) if key else message
