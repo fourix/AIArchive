@@ -180,7 +180,7 @@ fofosvr {
     @aiarchiveRoot path /aiarchive
     redir @aiarchiveRoot /aiarchive/ 308
 
-    handle_path /aiarchive/* {
+    handle /aiarchive/* {
         reverse_proxy 127.0.0.1:8000
     }
 }
