@@ -11,7 +11,7 @@
       <div class="wrap">
         <div class="site-header-row">
           <div>
-            <a class="brand" href="/">{{ t('site_title') }}</a>
+            <a class="brand" href="{{ path_for('index') }}">{{ t('site_title') }}</a>
             <p class="tagline">{{ t('tagline') }}</p>
           </div>
           <button
@@ -29,17 +29,17 @@
     <main id="page-top" class="wrap">
       <nav class="function-bar">
         <a
-          href="/import"
+          href="{{ path_for('import_page') }}"
           class="function-link {% if nav_current == 'import' %}function-link-active{% endif %}"
           >{{ t('nav_import') }}</a
         >
         <a
-          href="/browse"
+          href="{{ path_for('browse_page') }}"
           class="function-link {% if nav_current == 'browse' %}function-link-active{% endif %}"
           >{{ t('nav_browse') }}</a
         >
         <a
-          href="/search"
+          href="{{ path_for('search_page') }}"
           class="function-link {% if nav_current == 'search' %}function-link-active{% endif %}"
           >{{ t('nav_search') }}</a
         >

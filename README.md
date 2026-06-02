@@ -1,6 +1,6 @@
 # AI Chat Archive
 
-A local AI chat archive system built with FastAPI, SQLite FTS5, and Jinja2. The project is intended for personal use: importing your own official exports from OpenAI, Gemini, Grok, and DeepSeek into a unified archive so you can more easily search and revisit your past conversations, including on small hardware such as Raspberry Pi.
+A local AI chat archive system built with FastAPI, SQLite FTS5, and Jinja2. The project is intended for personal use: importing your own official exports from OpenAI, Gemini, Claude, Grok, and DeepSeek into a unified archive so you can more easily search and revisit your past conversations, including on small hardware such as Raspberry Pi.
 
 ## Notice
 
@@ -32,6 +32,7 @@ aiarchive/
   importers/
     __init__.py
     base.py
+    claude.py
     common.py
     deepseek.py
     gemini.py
@@ -98,6 +99,7 @@ Supported platform keys:
 - `openai`
 - `gemini`
 - `grok`
+- `claude`
 - `deepseek`
 
 OpenAI import format:
@@ -110,6 +112,13 @@ Gemini import format:
 - The ZIP must contain the standard Gemini Apps activity JSON from Google Takeout.
 - Any sibling media or attachment files in that same Gemini Apps folder are imported automatically.
 - Assistant HTML is preserved for display, and referenced assets are copied into app-managed storage under `data/media/`.
+
+Claude import format:
+
+- Upload the Claude ZIP export directly.
+- The archive root must contain `conversations.json`.
+- `users.json` or `memories.json` is used as a ZIP signature to distinguish Claude from other exports.
+- Message attachments recorded in the export are preserved as metadata; embedded file bytes are not included in the observed Claude ZIP format.
 
 DeepSeek import format:
 
@@ -137,6 +146,56 @@ Grok import format:
 - Python 3.11+ recommended
 - SQLite FTS5 is included in standard Python builds on Raspberry Pi OS
 - The app keeps dependencies minimal and uses synchronous SQLite access to reduce operational complexity
+
+## Caddy Subpath Deployment
+
+AIArchive can run behind a reverse proxy under a subpath such as `/aiarchive`.
+Set `AIARCHIVE_ROOT_PATH` so FastAPI generates links, redirects, static assets, and media URLs with the same public prefix.
+
+Example systemd service:
+
+```ini
+[Unit]
+Description=AIArchive
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/AIArchive
+Environment=AIARCHIVE_ROOT_PATH=/aiarchive
+ExecStart=/opt/AIArchive/.venv/bin/uvicorn aiarchive.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Example Caddy configuration:
+
+```caddy
+fofosvr {
+    @aiarchiveRoot path /aiarchive
+    redir @aiarchiveRoot /aiarchive/ 308
+
+    handle_path /aiarchive/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+}
+```
+
+Update an existing deployment:
+
+```bash
+cd /opt/AIArchive
+git pull
+. .venv/bin/activate
+pip install -r requirements.txt
+sudo systemctl restart aiarchive
+```
+
+Open `http://fofosvr/aiarchive/`.
 
 ## License
 

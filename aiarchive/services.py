@@ -100,6 +100,8 @@ def import_file(connection: Connection, platform: str, filename: str, raw: bytes
         return import_grok_export_zip(connection, filename, raw)
     if importer.platform == "deepseek" and _looks_like_zip_upload(filename, raw):
         return import_deepseek_export_zip(connection, filename, raw)
+    if importer.platform == "claude" and _looks_like_zip_upload(filename, raw):
+        return import_claude_export_zip(connection, filename, raw)
     if _looks_like_zip_upload(filename, raw):
         raise ValueError(f"{platform.capitalize()} import does not accept this ZIP format")
     file_sha = sha256_bytes(raw)
@@ -125,6 +127,8 @@ def import_file_from_path(connection: Connection, platform: str, json_path: str)
         return import_gemini_takeout_zip(connection, source_path.name, source_path.read_bytes())
     if importer.platform == "grok" and source_path.suffix.lower() == ".zip":
         return import_grok_export_zip(connection, source_path.name, source_path.read_bytes())
+    if importer.platform == "claude" and source_path.suffix.lower() == ".zip":
+        return import_claude_export_zip(connection, source_path.name, source_path.read_bytes())
     if source_path.suffix.lower() == ".zip":
         raise ValueError(f"{platform.capitalize()} import does not accept this ZIP format")
 
@@ -151,6 +155,8 @@ def import_file_with_uploaded_assets(
         return import_grok_export_zip(connection, filename, raw)
     if importer.platform == "deepseek" and _looks_like_zip_upload(filename, raw):
         return import_deepseek_export_zip(connection, filename, raw)
+    if importer.platform == "claude" and _looks_like_zip_upload(filename, raw):
+        return import_claude_export_zip(connection, filename, raw)
     if _looks_like_zip_upload(filename, raw):
         raise ValueError(f"{platform.capitalize()} import does not accept this ZIP format")
     file_sha = sha256_bytes(raw)
@@ -237,6 +243,27 @@ def import_deepseek_export_zip(connection: Connection, filename: str, raw: bytes
         importer,
         conversations_raw,
         error_prefix="DeepSeek archive content is not in the expected export format",
+    )
+    return _persist_import(connection, importer.platform, filename, file_sha, conversations)
+
+
+def import_claude_export_zip(connection: Connection, filename: str, raw: bytes) -> ImportResult:
+    importer = get_importer("claude")
+    file_sha = sha256_bytes(raw)
+
+    _validate_zip_matches_platform("claude", raw)
+
+    try:
+        conversations_raw = _read_claude_conversations_json(raw)
+    except UnicodeDecodeError as exc:
+        raise ValueError("Could not read filenames inside the Claude ZIP archive") from exc
+    except zipfile.BadZipFile as exc:
+        raise ValueError("Uploaded Claude file is not a valid ZIP archive") from exc
+
+    conversations = _parse_import_bytes(
+        importer,
+        conversations_raw,
+        error_prefix="Claude archive content is not in the expected export format",
     )
     return _persist_import(connection, importer.platform, filename, file_sha, conversations)
 
@@ -416,7 +443,8 @@ def list_conversations(
     page = max(page, 1)
     offset = (page - 1) * limit
     if query:
-        if _contains_cjk(query):
+        fts_query = _build_fts_match_query(query)
+        if _contains_cjk(query) or not fts_query:
             return _list_conversations_with_like_search(
                 connection=connection,
                 query=query,
@@ -429,7 +457,7 @@ def list_conversations(
             )
         return _list_conversations_with_search(
             connection=connection,
-            query=query,
+            query=fts_query,
             platform=platform,
             date_from=date_from,
             date_to=date_to,
@@ -591,6 +619,17 @@ def _contains_cjk(value: str) -> bool:
         if 0x3400 <= codepoint <= 0x9FFF or 0xF900 <= codepoint <= 0xFAFF:
             return True
     return False
+
+
+def _build_fts_match_query(value: str) -> str:
+    phrases = [
+        phrase
+        for phrase in re.findall(r"\S+", value or "")
+        if re.search(r"[A-Za-z0-9_]", phrase)
+    ]
+    if not phrases:
+        return ""
+    return " AND ".join(f'"{phrase.replace(chr(34), chr(34) * 2)}"' for phrase in phrases)
 
 
 def _list_conversations_with_search(
@@ -862,7 +901,6 @@ def get_platform_browse_location(
         "page": page,
         "page_size": page_size,
         "anchor": f"conversation-{conversation_id}",
-        "url": f"/platforms/{row['platform']}?page={page}#focus-conversation-{conversation_id}",
     }
 
 
@@ -934,7 +972,11 @@ def _zip_contains_platform_signature(platform: str, raw: bytes) -> bool:
     if platform == "gemini":
         return any(_is_gemini_activity_json_name(name) for name in member_names)
     if platform == "deepseek":
-        return "conversations.json" in member_names
+        names = {name.casefold() for name in member_names}
+        return "conversations.json" in names and not ({"users.json", "memories.json"} & names)
+    if platform == "claude":
+        names = {name.casefold() for name in member_names}
+        return "conversations.json" in names and bool({"users.json", "memories.json"} & names)
     if platform == "grok":
         return "prod-grok-backend.json" in member_names
     if platform == "openai":
@@ -951,6 +993,8 @@ def _validate_zip_matches_platform(platform: str, raw: bytes) -> None:
             raise ValueError("This ZIP does not look like a Gemini Takeout export")
         if platform == "deepseek":
             raise ValueError("This ZIP does not look like a DeepSeek export")
+        if platform == "claude":
+            raise ValueError("This ZIP does not look like a Claude export")
         if platform == "grok":
             raise ValueError("This ZIP does not look like a Grok export")
         if platform == "openai":
@@ -1092,6 +1136,22 @@ def _read_deepseek_conversations_json(raw: bytes) -> bytes:
                 return source.read()
 
     raise ValueError("DeepSeek ZIP is missing conversations.json at the archive root")
+
+
+def _read_claude_conversations_json(raw: bytes) -> bytes:
+    with _open_zip_with_fallbacks(raw) as archive:
+        for info in archive.infolist():
+            member_path = PurePosixPath(info.filename)
+            if info.is_dir() or not member_path.parts:
+                continue
+            if len(member_path.parts) != 1:
+                continue
+            if member_path.name.casefold() != "conversations.json":
+                continue
+            with archive.open(info, "r") as source:
+                return source.read()
+
+    raise ValueError("Claude ZIP is missing conversations.json at the archive root")
 
 
 def _extract_zip_to_directory(raw: bytes, destination_root: Path) -> None:

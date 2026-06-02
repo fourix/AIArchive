@@ -4,7 +4,7 @@
 <section class="panel">
   <h1>{{ t('search_heading') }}</h1>
   <p class="page-intro">{{ t('search_intro') }}</p>
-  <form method="get" action="/search" class="search-form">
+  <form method="get" action="{{ path_for('search_page') }}" class="search-form">
     <label>
       <span>{{ t('keyword_label') }}</span>
       <input
@@ -61,7 +61,7 @@
     {% if pg.has_prev %}
     <a
       class="pager-link"
-      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      href="{{ path_with_query('search_page', query_params={'q': filters.q, 'platform': filters.platform, 'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page - 1}) }}"
       >{{ t('prev_page') }}</a
     >
     {% endif %}
@@ -71,7 +71,7 @@
     {% if pg.has_next %}
     <a
       class="pager-link"
-      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      href="{{ path_with_query('search_page', query_params={'q': filters.q, 'platform': filters.platform, 'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page + 1}) }}"
       >{{ t('next_page') }}</a
     >
     {% endif %}
@@ -80,7 +80,7 @@
     {% for item in conversations %}
     <li>
       <a
-        href="/conversations/{{ item.id }}{% if item.matched_message_id %}#message-{{ item.matched_message_id }}{% endif %}"
+        href="{{ path_for('conversation_detail', conversation_id=item.id) }}{% if item.matched_message_id %}#message-{{ item.matched_message_id }}{% endif %}"
         class="conversation-link"
       >
         <div class="conversation-head">
@@ -104,7 +104,7 @@
     {% if pg.has_prev %}
     <a
       class="pager-link"
-      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      href="{{ path_with_query('search_page', query_params={'q': filters.q, 'platform': filters.platform, 'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page - 1}) }}"
       >{{ t('prev_page') }}</a
     >
     {% endif %}
@@ -114,7 +114,7 @@
     {% if pg.has_next %}
     <a
       class="pager-link"
-      href="/search?q={{ filters.q }}&platform={{ filters.platform }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      href="{{ path_with_query('search_page', query_params={'q': filters.q, 'platform': filters.platform, 'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page + 1}) }}"
       >{{ t('next_page') }}</a
     >
     {% endif %}

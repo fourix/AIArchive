@@ -10,16 +10,16 @@ adopted
 
 ## Last Meaningful Update
 
-2026-05-24：生成 Project Ledger 接入账本。
+2026-05-26：新增 Claude 导出 ZIP 导入支持，并验证可导入用户提供的 Claude 导出样例。
 
 ## What Works Now
 
 - README 记录了本地运行方式和导入入口。
 - 项目包含 FastAPI 应用入口、导入器、模板、静态资源和 SQLite 数据目录。
+- 支持 OpenAI、Gemini、Claude、Grok 和 DeepSeek 平台导入。
 
 ## What Is Broken / Unknown
 
-- 当前功能完整度待确认。
 - 测试命令待确认。
 - 部署方式待确认。
 - 接入时 worktree 有未提交内容，包含既有的 `aiarchive/services.py` 改动。

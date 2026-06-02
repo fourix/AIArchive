@@ -1,7 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 from pathlib import Path
+
+
+def _normalize_root_path(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw or raw == "/":
+        return ""
+    return "/" + raw.strip("/")
 
 
 @dataclass(frozen=True)
@@ -14,6 +22,7 @@ class Settings:
     templates_dir: Path = Path(__file__).resolve().parent / "templates"
     static_dir: Path = Path(__file__).resolve().parent / "static"
     app_title: str = "AI Chat Archive"
+    root_path: str = field(default_factory=lambda: _normalize_root_path(os.getenv("AIARCHIVE_ROOT_PATH", "")))
 
 
 settings = Settings()

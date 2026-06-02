@@ -41,7 +41,7 @@ async def lifespan(_: FastAPI):
 
 
 ensure_runtime_directories()
-app = FastAPI(title=settings.app_title, lifespan=lifespan)
+app = FastAPI(title=settings.app_title, lifespan=lifespan, root_path=settings.root_path)
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
 templates = Jinja2Templates(directory=settings.templates_dir)
@@ -113,7 +113,7 @@ TRANSLATIONS = {
         "home": "Home",
         "import_page_title": "Import",
         "import_heading": "Import Export Files",
-        "import_intro": "Upload ZIP exports from supported platforms and merge them into your local archive. OpenAI supports ChatGPT export ZIP files with sharded conversations and bundled attachments, Gemini uses the original Google Takeout ZIP, DeepSeek reads conversations.json from the archive root, and Grok automatically finds prod-grok-backend.json and its sibling attachments.",
+        "import_intro": "Upload ZIP exports from supported platforms and merge them into your local archive. OpenAI supports ChatGPT export ZIP files with sharded conversations and bundled attachments, Gemini uses the original Google Takeout ZIP, Claude reads conversations.json from the archive root, DeepSeek reads conversations.json from the archive root, and Grok automatically finds prod-grok-backend.json and its sibling attachments.",
         "platform_label": "Platform",
         "export_file_label": "Export File",
         "choose_file": "Choose File",
@@ -185,11 +185,13 @@ TRANSLATIONS = {
         "error_gemini_requires_takeout": "Gemini import requires the original Google Takeout ZIP file",
         "error_gemini_not_export": "This ZIP does not look like a Gemini Takeout export",
         "error_deepseek_not_export": "This ZIP does not look like a DeepSeek export",
+        "error_claude_not_export": "This ZIP does not look like a Claude export",
         "error_grok_not_export": "This ZIP does not look like a Grok export",
         "error_openai_not_export": "This ZIP does not look like an OpenAI ChatGPT export",
         "error_zip_platform_mismatch": "This ZIP does not match the selected platform",
         "error_gemini_missing_json": "Gemini Takeout ZIP is missing the expected Gemini Apps activity JSON file",
         "error_deepseek_missing_json": "DeepSeek ZIP is missing conversations.json at the archive root",
+        "error_claude_missing_json": "Claude ZIP is missing conversations.json at the archive root",
         "error_grok_missing_json": "Grok ZIP is missing prod-grok-backend.json",
         "error_openai_missing_json": "OpenAI export is missing export_manifest.json or conversations JSON shards",
     },
@@ -203,7 +205,7 @@ TRANSLATIONS = {
         "home": "首页",
         "import_page_title": "导入",
         "import_heading": "导入导出文件",
-        "import_intro": "上传各平台导出的 ZIP 文件并合并到本地档案。OpenAI 支持带分片 conversations 和附件的 ChatGPT 导出 ZIP，Gemini 使用原始 Google Takeout ZIP，DeepSeek 从压缩包根目录读取 conversations.json，Grok 会自动定位 prod-grok-backend.json 及同级附件。",
+        "import_intro": "上传各平台导出的 ZIP 文件并合并到本地档案。OpenAI 支持带分片 conversations 和附件的 ChatGPT 导出 ZIP，Gemini 使用原始 Google Takeout ZIP，Claude 从压缩包根目录读取 conversations.json，DeepSeek 从压缩包根目录读取 conversations.json，Grok 会自动定位 prod-grok-backend.json 及同级附件。",
         "platform_label": "平台",
         "export_file_label": "导出文件",
         "start_import": "开始导入",
@@ -277,11 +279,13 @@ TRANSLATIONS["zh"].update(
         "error_gemini_requires_takeout": "Gemini 导入需要原始 Google Takeout ZIP 文件",
         "error_gemini_not_export": "这个 ZIP 看起来不像 Gemini Takeout 导出文件",
         "error_deepseek_not_export": "这个 ZIP 看起来不像 DeepSeek 导出文件",
+        "error_claude_not_export": "这个 ZIP 看起来不像 Claude 导出文件",
         "error_grok_not_export": "这个 ZIP 看起来不像 Grok 导出文件",
         "error_openai_not_export": "这个 ZIP 看起来不像 OpenAI ChatGPT 导出文件",
         "error_zip_platform_mismatch": "这个 ZIP 与当前选择的平台不匹配",
         "error_gemini_missing_json": "Gemini Takeout ZIP 中缺少预期的 Gemini Apps 活动 JSON 文件",
         "error_deepseek_missing_json": "DeepSeek ZIP 根目录缺少 conversations.json",
+        "error_claude_missing_json": "Claude ZIP 根目录缺少 conversations.json",
         "error_grok_missing_json": "Grok ZIP 中缺少 prod-grok-backend.json",
         "error_openai_missing_json": "OpenAI 导出中缺少 export_manifest.json 或 conversations 分片 JSON",
     }
@@ -375,6 +379,31 @@ def build_language_switch_urls(request: Request) -> dict[str, str]:
     return {code: str(request.url.include_query_params(lang=code)) for code in SUPPORTED_LANGUAGES}
 
 
+def route_url(request: Request, route_name: str, **path_params: object) -> str:
+    return str(request.url_for(route_name, **path_params))
+
+
+def route_url_with_query(
+    request: Request,
+    route_name: str,
+    *,
+    path_params: dict[str, object] | None = None,
+    query_params: dict[str, object] | None = None,
+    fragment: str | None = None,
+) -> str:
+    url = route_url(request, route_name, **(path_params or {}))
+    filtered_query: list[tuple[str, str]] = []
+    for key, value in (query_params or {}).items():
+        if value is None or value == "":
+            continue
+        filtered_query.append((key, str(value)))
+    if filtered_query:
+        url = f"{url}?{urlencode(filtered_query)}"
+    if fragment:
+        url = f"{url}#{fragment}"
+    return url
+
+
 def template_response(
     request: Request,
     template_name: str,
@@ -389,6 +418,14 @@ def template_response(
         "t": make_translator(language),
         "languages": SUPPORTED_LANGUAGES,
         "language_switch_urls": build_language_switch_urls(request),
+        "path_for": lambda route_name, **path_params: route_url(request, route_name, **path_params),
+        "path_with_query": lambda route_name, path_params=None, query_params=None, fragment=None: route_url_with_query(
+            request,
+            route_name,
+            path_params=path_params,
+            query_params=query_params,
+            fragment=fragment,
+        ),
     }
     response = templates.TemplateResponse(request, template_name, merged_context)
     if request.query_params.get("lang", "").strip().lower() in SUPPORTED_LANGUAGES:
@@ -397,7 +434,8 @@ def template_response(
 
 
 def wants_json(request: Request) -> bool:
-    if request.url.path.startswith("/api/"):
+    scope_path = str(request.scope.get("path") or request.url.path)
+    if scope_path.startswith("/api/"):
         return True
     accept = request.headers.get("accept", "")
     return "application/json" in accept and "text/html" not in accept
@@ -426,11 +464,13 @@ def localize_error_message(language: str, message: str) -> str:
         "Gemini import requires the original Google Takeout ZIP file": "error_gemini_requires_takeout",
         "This ZIP does not look like a Gemini Takeout export": "error_gemini_not_export",
         "This ZIP does not look like a DeepSeek export": "error_deepseek_not_export",
+        "This ZIP does not look like a Claude export": "error_claude_not_export",
         "This ZIP does not look like a Grok export": "error_grok_not_export",
         "This ZIP does not look like an OpenAI ChatGPT export": "error_openai_not_export",
         "This ZIP does not match the selected platform": "error_zip_platform_mismatch",
         "Gemini Takeout ZIP is missing the expected Gemini Apps activity JSON file": "error_gemini_missing_json",
         "DeepSeek ZIP is missing conversations.json at the archive root": "error_deepseek_missing_json",
+        "Claude ZIP is missing conversations.json at the archive root": "error_claude_missing_json",
         "Grok ZIP is missing prod-grok-backend.json": "error_grok_missing_json",
         "OpenAI export is missing export_manifest.json or conversations JSON shards": "error_openai_missing_json",
         "Could not read filenames inside the OpenAI ZIP archive": "error_invalid_zip",
@@ -770,7 +810,10 @@ async def import_json(
             query = {"platform": normalized_platform}
             if current_lang != DEFAULT_LANGUAGE:
                 query["lang"] = current_lang
-            response = RedirectResponse(url=f"/import?{urlencode(query)}", status_code=303)
+            response = RedirectResponse(
+                url=route_url_with_query(request, "import_page", query_params=query),
+                status_code=303,
+            )
             response.set_cookie(
                 FLASH_IMPORT_ERROR_COOKIE,
                 quote(localize_error_message(current_lang, str(exc)), safe=""),
@@ -783,18 +826,28 @@ async def import_json(
     current_lang = resolve_language(request)
     if current_lang != DEFAULT_LANGUAGE:
         query["lang"] = current_lang
-    return RedirectResponse(url=f"/import?{urlencode(query)}", status_code=303)
+    return RedirectResponse(
+        url=route_url_with_query(request, "import_page", query_params=query),
+        status_code=303,
+    )
 
 
 @app.post("/platforms/{platform}/purge")
-def purge_platform(platform: str):
+def purge_platform(request: Request, platform: str):
     normalized_platform = platform.lower()
     with get_connection() as connection:
         try:
             purge_platform_data(connection, normalized_platform)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return RedirectResponse(url=f"/browse?purged=1&platform={normalized_platform}", status_code=303)
+    return RedirectResponse(
+        url=route_url_with_query(
+            request,
+            "browse_page",
+            query_params={"purged": "1", "platform": normalized_platform},
+        ),
+        status_code=303,
+    )
 
 
 @app.post("/api/platforms/{platform}/purge")
@@ -916,6 +969,17 @@ def conversation_detail(request: Request, conversation_id: int):
         browse_location = get_platform_browse_location(connection, conversation_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    if browse_location:
+        browse_location = {
+            **browse_location,
+            "url": route_url_with_query(
+                request,
+                "platform_browse",
+                path_params={"platform": browse_location["platform"]},
+                query_params={"page": browse_location["page"]},
+                fragment=f"focus-conversation-{conversation_id}",
+            ),
+        }
     return template_response(
         request,
         "conversation.html",

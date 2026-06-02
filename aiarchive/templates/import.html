@@ -4,7 +4,7 @@
 <section class="panel">
     <h1>{{ t('import_heading') }}</h1>
     <p class="page-intro">{{ t('import_intro') }}</p>
-    <form method="post" action="/import" enctype="multipart/form-data" class="import-form">
+    <form method="post" action="{{ path_for('import_json') }}" enctype="multipart/form-data" class="import-form">
         <label>
             <span>{{ t('platform_label') }}</span>
             <select name="platform" required>

@@ -7,9 +7,9 @@
         <p class="page-intro">{{ t('hero_intro') }}</p>
     </div>
     <div class="hero-actions">
-        <a href="/import" class="hero-link">{{ t('go_import') }}</a>
-        <a href="/browse" class="hero-link">{{ t('go_browse') }}</a>
-        <a href="/search" class="hero-link">{{ t('go_search') }}</a>
+        <a href="{{ path_for('import_page') }}" class="hero-link">{{ t('go_import') }}</a>
+        <a href="{{ path_for('browse_page') }}" class="hero-link">{{ t('go_browse') }}</a>
+        <a href="{{ path_for('search_page') }}" class="hero-link">{{ t('go_search') }}</a>
     </div>
 </section>
 
@@ -18,7 +18,7 @@
         <h2>{{ t('platform_overview') }}</h2>
         <div class="platform-grid">
             {% for item in platform_overview %}
-            <a href="/platforms/{{ item.platform }}" class="platform-card">
+            <a href="{{ path_for('platform_browse', platform=item.platform) }}" class="platform-card">
                 <div class="conversation-head">
                     <strong>{{ item.platform|capitalize }}</strong>
                     <span class="platform">{{ item.platform }}</span>

@@ -3,7 +3,7 @@ platform=platform|capitalize) }}{% endblock %} {% block content %} {% set pg =
 pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
 'has_next': false}, true) %}
 <section class="panel">
-  <p><a href="/">{{ t('back_to_home') }}</a></p>
+  <p><a href="{{ path_for('index') }}">{{ t('back_to_home') }}</a></p>
   <div class="browse-head">
     <h1>{{ t('browse_platform', platform=platform|capitalize) }}</h1>
     <span class="platform">{{ platform }}</span>
@@ -11,7 +11,7 @@ pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
   {% if platform == 'gemini' %}
   <p class="page-intro">{{ t('gemini_note') }}</p>
   {% endif %}
-  <form method="get" action="/platforms/{{ platform }}" class="search-form">
+  <form method="get" action="{{ path_for('platform_browse', platform=platform) }}" class="search-form">
     <label>
       <span>{{ t('start_date_label') }}</span>
       <input
@@ -48,7 +48,7 @@ pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
     {% if pg.has_prev %}
     <a
       class="pager-link"
-      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      href="{{ path_with_query('platform_browse', path_params={'platform': platform}, query_params={'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page - 1}) }}"
       >{{ t('prev_page') }}</a
     >
     {% endif %}
@@ -58,7 +58,7 @@ pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
     {% if pg.has_next %}
     <a
       class="pager-link"
-      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      href="{{ path_with_query('platform_browse', path_params={'platform': platform}, query_params={'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page + 1}) }}"
       >{{ t('next_page') }}</a
     >
     {% endif %}
@@ -71,7 +71,7 @@ pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
         class="scroll-anchor"
         aria-hidden="true"
       ></span>
-      <a href="/conversations/{{ item.id }}" class="conversation-link">
+      <a href="{{ path_for('conversation_detail', conversation_id=item.id) }}" class="conversation-link">
         <div class="conversation-head">
           <strong class="conversation-title" title="{{ item.title }}"
             >{{ item.title }}</strong
@@ -95,7 +95,7 @@ pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
     {% if pg.has_prev %}
     <a
       class="pager-link"
-      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page - 1 }}"
+      href="{{ path_with_query('platform_browse', path_params={'platform': platform}, query_params={'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page - 1}) }}"
       >{{ t('prev_page') }}</a
     >
     {% endif %}
@@ -105,7 +105,7 @@ pagination|default({'page': 1, 'total_pages': 1, 'total': 0, 'has_prev': false,
     {% if pg.has_next %}
     <a
       class="pager-link"
-      href="/platforms/{{ platform }}?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ pg.page + 1 }}"
+      href="{{ path_with_query('platform_browse', path_params={'platform': platform}, query_params={'date_from': filters.date_from, 'date_to': filters.date_to, 'page': pg.page + 1}) }}"
       >{{ t('next_page') }}</a
     >
     {% endif %}

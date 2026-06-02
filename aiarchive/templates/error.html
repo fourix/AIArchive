@@ -5,6 +5,6 @@
     <p class="error-code">{{ status_code }}</p>
     <h1>{{ error_heading }}</h1>
     <p class="page-intro">{{ error_message }}</p>
-    <p><a href="/" class="button-link">{{ t('error_back_home') }}</a></p>
+    <p><a href="{{ path_for('index') }}" class="button-link">{{ t('error_back_home') }}</a></p>
 </section>
 {% endblock %}

@@ -1,6 +1,6 @@
 # AI Chat Archive
 
-一个基于 FastAPI、SQLite FTS5 和 Jinja2 的本地 AI 对话归档系统。项目主要面向个人使用：导入你自己从 OpenAI、Gemini、Grok 和 DeepSeek 获取的官方导出文件，统一归档后更方便地检索和回看过去的聊天内容，也适合运行在 Raspberry Pi 这类小型设备上。
+一个基于 FastAPI、SQLite FTS5 和 Jinja2 的本地 AI 对话归档系统。项目主要面向个人使用：导入你自己从 OpenAI、Gemini、Claude、Grok 和 DeepSeek 获取的官方导出文件，统一归档后更方便地检索和回看过去的聊天内容，也适合运行在 Raspberry Pi 这类小型设备上。
 
 ## 说明
 
@@ -32,6 +32,7 @@ aiarchive/
   importers/
     __init__.py
     base.py
+    claude.py
     common.py
     deepseek.py
     gemini.py
@@ -99,6 +100,7 @@ curl -X POST http://localhost:8000/import \
 - `openai`
 - `gemini`
 - `grok`
+- `claude`
 - `deepseek`
 
 OpenAI 导入格式：
@@ -111,6 +113,13 @@ Gemini 导入格式：
 - ZIP 内必须包含 Google Takeout 标准的 Gemini Apps 活动 JSON。
 - 同一 Gemini Apps 目录下的媒体与附件会自动一起导入。
 - Assistant 的 HTML 内容会保留用于展示，引用到的资源会复制到应用管理的 `data/media/` 目录中。
+
+Claude 导入格式：
+
+- 直接上传 Claude ZIP 导出文件。
+- 压缩包根目录必须包含 `conversations.json`。
+- 导入时会用 `users.json` 或 `memories.json` 作为 Claude ZIP 特征，避免与其他平台的 `conversations.json` 混淆。
+- 导出中记录的消息附件会作为元数据保留；本次观察到的 Claude ZIP 格式不包含附件原始字节。
 
 DeepSeek 导入格式：
 
@@ -138,6 +147,56 @@ Grok 导入格式：
 - 建议使用 Python 3.11+
 - Raspberry Pi OS 标准 Python 构建通常已包含 SQLite FTS5
 - 项目依赖较少，并使用同步 SQLite 访问以降低运维复杂度
+
+## Caddy 子路径部署
+
+AIArchive 可以通过反向代理部署到 `/aiarchive` 这类子路径下。
+设置 `AIARCHIVE_ROOT_PATH` 后，FastAPI 会按同一个公开前缀生成页面链接、重定向、静态资源和媒体文件 URL。
+
+systemd service 示例：
+
+```ini
+[Unit]
+Description=AIArchive
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/AIArchive
+Environment=AIARCHIVE_ROOT_PATH=/aiarchive
+ExecStart=/opt/AIArchive/.venv/bin/uvicorn aiarchive.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Caddy 配置示例：
+
+```caddy
+fofosvr {
+    @aiarchiveRoot path /aiarchive
+    redir @aiarchiveRoot /aiarchive/ 308
+
+    handle_path /aiarchive/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+}
+```
+
+更新已有部署：
+
+```bash
+cd /opt/AIArchive
+git pull
+. .venv/bin/activate
+pip install -r requirements.txt
+sudo systemctl restart aiarchive
+```
+
+访问 `http://fofosvr/aiarchive/`。
 
 ## 许可证
 

@@ -10,7 +10,7 @@
     <div class="platform-grid">
         {% for item in platform_overview %}
         <section class="platform-card platform-card-shell">
-            <a href="/platforms/{{ item.platform }}" class="platform-card-link">
+            <a href="{{ path_for('platform_browse', platform=item.platform) }}" class="platform-card-link">
                 <div class="conversation-head">
                     <strong>{{ item.platform|capitalize }}</strong>
                     <span class="platform">{{ item.platform }}</span>
@@ -27,7 +27,7 @@
                     {% endif %}
                 </p>
             </a>
-            <form method="post" action="/platforms/{{ item.platform }}/purge" class="platform-purge-form" onsubmit="return confirm('{{ t('clear_platform_confirm', platform=item.platform|capitalize) }}');">
+            <form method="post" action="{{ path_for('purge_platform', platform=item.platform) }}" class="platform-purge-form" onsubmit="return confirm('{{ t('clear_platform_confirm', platform=item.platform|capitalize) }}');">
                 <button type="submit" class="subtle-danger-button">{{ t('clear_platform_data', platform=item.platform|capitalize) }}</button>
             </form>
         </section>

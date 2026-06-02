@@ -1,10 +1,12 @@
 from .base import BaseImporter
+from .claude import ClaudeImporter
 from .deepseek import DeepSeekImporter
 from .gemini import GeminiImporter
 from .grok import GrokImporter
 from .openai import OpenAIImporter
 
 IMPORTERS: dict[str, type[BaseImporter]] = {
+    "claude": ClaudeImporter,
     "openai": OpenAIImporter,
     "gemini": GeminiImporter,
     "grok": GrokImporter,

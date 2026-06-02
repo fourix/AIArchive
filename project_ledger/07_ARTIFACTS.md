@@ -5,6 +5,7 @@
 - `aiarchive/main.py`：FastAPI 应用入口。
 - `aiarchive/services.py`：导入、检索、列表和数据持久化服务逻辑。
 - `aiarchive/importers/`：各平台导出格式导入器。
+- `aiarchive/importers/claude.py`：Claude 导出 `conversations.json` 导入器。
 
 ## 构建命令
 

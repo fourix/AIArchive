@@ -2,7 +2,7 @@
 %} {% block content %}
 <section class="panel">
   <div class="detail-actions">
-    <a href="/" class="button-link">{{ t('back_to_home') }}</a>
+    <a href="{{ path_for('index') }}" class="button-link">{{ t('back_to_home') }}</a>
     {% if browse_location %}
     <a href="{{ browse_location.url }}" class="button-link"
       >{{ t('back_to_platform_list',

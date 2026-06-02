@@ -10,7 +10,7 @@ AI Chat Archive
 
 ## 一句话目标
 
-本地归档并检索个人从 OpenAI、Gemini、Grok 和 DeepSeek 导出的 AI 对话记录。
+本地归档并检索个人从 OpenAI、Gemini、Claude、Grok 和 DeepSeek 导出的 AI 对话记录。
 
 ## 项目类型
 
