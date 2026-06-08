@@ -837,7 +837,7 @@ def get_conversation_detail(connection: Connection, conversation_id: int) -> dic
         SELECT id, role, content, created_at, sequence_no, metadata_json
         FROM messages
         WHERE conversation_id = ?
-        ORDER BY created_at ASC, sequence_no ASC, id ASC
+        ORDER BY sequence_no ASC, created_at ASC, id ASC
         """,
         (conversation_id,),
     ).fetchall()

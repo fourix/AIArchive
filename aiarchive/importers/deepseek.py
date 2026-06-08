@@ -90,23 +90,50 @@ class DeepSeekImporter(BaseImporter):
 
     @staticmethod
     def _sorted_nodes(mapping: dict[str, Any]) -> list[dict[str, Any]]:
-        nodes: list[tuple[str, dict[str, Any]]] = []
-        for node in mapping.values():
+        node_by_id: dict[str, dict[str, Any]] = {}
+        for fallback_id, node in mapping.items():
             if not isinstance(node, dict):
                 continue
-            message = node.get("message")
-            if not isinstance(message, dict):
+            node_id = extract_text(node.get("id")) or str(fallback_id)
+            if not node_id:
                 continue
-            sort_value = (
-                message.get("inserted_at")
-                or node.get("inserted_at")
-                or message.get("created_at")
-                or node.get("created_at")
-                or ""
-            )
-            nodes.append((str(sort_value), node))
-        nodes.sort(key=lambda item: item[0])
-        return [node for _, node in nodes]
+            node_by_id[node_id] = node
+
+        ordered: list[dict[str, Any]] = []
+        visited: set[str] = set()
+
+        def visit(node_id: str) -> None:
+            if node_id in visited:
+                return
+            node = node_by_id.get(node_id)
+            if node is None:
+                return
+
+            visited.add(node_id)
+            if isinstance(node.get("message"), dict):
+                ordered.append(node)
+
+            for child_id in node.get("children") or []:
+                visit(str(child_id))
+
+        root_ids = ["root"] if "root" in node_by_id else []
+        root_ids.extend(
+            node_id
+            for node_id, node in node_by_id.items()
+            if node_id not in root_ids and str(node.get("parent") or "") not in node_by_id
+        )
+
+        for node_id in root_ids:
+            visit(node_id)
+
+        for node_id in sorted(node_by_id, key=DeepSeekImporter._node_id_sort_key):
+            visit(node_id)
+
+        return ordered
+
+    @staticmethod
+    def _node_id_sort_key(value: str) -> tuple[int, int | str]:
+        return (0, int(value)) if value.isdigit() else (1, value)
 
     @staticmethod
     def _extract_fragments_text(fragments: list[Any]) -> str:
